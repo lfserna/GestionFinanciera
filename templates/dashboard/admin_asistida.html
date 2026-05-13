@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class='h3 fw-bold'>Dashboard admin asistida</h1>
+<div class="row g-3"><div class="col-md-6"><div class='card gf-card'><div class='card-body'><span class="text-muted">Asistidos</span><h2>{{ total_asistidos or 0 }}</h2></div></div></div><div class="col-md-6"><div class='card gf-card'><div class='card-body'><span class="text-muted">Solicitudes pendientes</span><h2>{{ pendientes or 0 }}</h2></div></div></div></div>
+{% endblock %}

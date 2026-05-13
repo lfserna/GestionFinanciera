@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 fw-bold">Usuarios</h1>
+<div class="card gf-card mb-3">
+  <div class="card-body">
+    <form method="post" action="{{ url_for('superadmin.crear_usuario') }}" class="row g-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-md-2"><input name="nombre" class="form-control" placeholder="Nombre *" required></div>
+      <div class="col-md-2"><input name="apellido" class="form-control" placeholder="Apellido *" required></div>
+      <div class="col-md-3"><input name="email" type="email" class="form-control" placeholder="Email *" required></div>
+      <div class="col-md-2"><input name="telefono" class="form-control" placeholder="Teléfono"></div>
+      <div class="col-md-2"><select name="rol_id" class="form-select" required>{% for r in roles %}<option value="{{ r.id }}">{{ r.nombre }}</option>{% endfor %}</select></div>
+      <div class="col-md-3"><select name="admin_asistida_id" class="form-select"><option value="">Admin asistida opcional</option>{% for a in admins %}<option value="{{ a.id }}">{{ a.nombre_completo }}</option>{% endfor %}</select></div>
+      <div class="col-md-2"><button class="btn btn-primary w-100">Crear</button></div>
+      <div class="col-12"><small class="text-muted">La contraseña temporal se asigna automáticamente como <b>hola123</b> y el usuario deberá cambiarla al iniciar sesión.</small></div>
+    </form>
+  </div>
+</div>
+<div class="table-responsive-mobile">
+  <table class="table">
+    <thead><tr><th>ID</th><th>Nombre</th><th>Apellido</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+    <tbody>{% for u in usuarios %}<tr>
+      <td data-label="ID">{{ u.id }}</td>
+      <td data-label="Nombre">{{ u.nombre }}</td>
+      <td data-label="Apellido">{{ u.apellido or '-' }}</td>
+      <td data-label="Email">{{ u.email }}</td>
+      <td data-label="Teléfono">{{ u.telefono or '-' }}</td>
+      <td data-label="Rol">{{ u.rol.nombre }}</td>
+      <td data-label="Estado">{{ 'Activo' if u.estado else 'Inactivo' }}</td>
+      <td><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('superadmin.toggle_usuario', id=u.id) }}">Activar/Desactivar</a></td>
+    </tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% endblock %}

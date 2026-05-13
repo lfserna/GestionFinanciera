@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 fw-bold">Solicitar dinero</h1>
+<div class="card gf-card"><div class="card-body"><form method="post">
+{{ form.hidden_tag() }}
+<label class="form-label gf-label">Categoría <small class="optional">Opcional</small></label>{{ form.categoria_id(class='form-select form-select-lg') }}
+<label class="form-label gf-label mt-3">Monto solicitado <small class="required">Obligatorio</small></label>{{ form.monto_solicitado(class='form-control form-control-lg', inputmode='decimal', step='0.01') }}
+<label class="form-label gf-label mt-3">Prioridad <small class="optional">Opcional</small></label>{{ form.prioridad(class='form-select form-select-lg') }}
+<label class="form-label gf-label mt-3">Referencia <small class="optional">Opcional</small></label>{{ form.referencia(class='form-control form-control-lg') }}
+<label class="form-label gf-label mt-3">Comentario <small class="required">Obligatorio</small></label>{{ form.comentario_asistida(class='form-control form-control-lg', rows='3') }}
+<button class="btn btn-primary btn-lg w-100 mt-4">Solicitar</button>
+</form></div></div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 fw-bold">{{ titulo }}</h1>
+<div class="card gf-card"><div class="card-body"><form method="post">
+{{ form.hidden_tag() }}
+<label class="form-label gf-label">Título <small class="required">Obligatorio</small></label>{{ form.titulo(class='form-control form-control-lg') }}
+<label class="form-label gf-label mt-3">Mensaje <small class="required">Obligatorio</small></label>{{ form.mensaje(class='form-control form-control-lg', rows='4') }}
+<label class="form-label gf-label mt-3">Tipo <small class="required">Obligatorio</small></label>{{ form.tipo(class='form-select form-select-lg') }}
+<label class="form-label gf-label mt-3">Destino <small class="required">Obligatorio</small></label>{{ form.destino(class='form-select form-select-lg') }}
+<label class="form-label gf-label mt-3">Rol <small class="optional">Opcional si destino es rol</small></label>{{ form.rol_id(class='form-select form-select-lg') }}
+<label class="form-label gf-label mt-3">Usuario <small class="optional">Opcional si destino es usuario</small></label>{{ form.usuario_id(class='form-select form-select-lg') }}
+<label class="form-label gf-label mt-3">Fecha inicio <small class="optional">Opcional</small></label>{{ form.fecha_inicio(class='form-control form-control-lg') }}
+<label class="form-label gf-label mt-3">Fecha fin <small class="optional">Opcional</small></label>{{ form.fecha_fin(class='form-control form-control-lg') }}
+<div class="form-check mt-3">{{ form.mostrar_cada_login(class='form-check-input') }} {{ form.mostrar_cada_login.label(class='form-check-label') }}</div>
+<div class="form-check mt-2">{{ form.estado(class='form-check-input') }} {{ form.estado.label(class='form-check-label') }}</div>
+<button class="btn btn-primary btn-lg w-100 mt-4">Guardar</button>
+</form></div></div>
+{% endblock %}

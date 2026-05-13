@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><h1 class="h3 fw-bold">Cuentas</h1><a class="btn btn-primary" href="{{ url_for('cuentas.nueva') }}">Nueva</a></div>
+<div class="row g-3">{% for c in cuentas %}<div class="col-md-6 col-lg-4"><div class="card gf-card"><div class="card-body"><h5>{{ c.nombre }}</h5><span class="badge text-bg-light">{{ c.tipo_cuenta }}</span><span class="badge text-bg-secondary">{{ c.uso_cuenta }}</span>{% if c.banco_nombre %}<p class="text-muted mb-1 mt-2">{{ c.banco_nombre }}</p>{% endif %}<h3 class="mt-2">{{ c.saldo_actual|money }}</h3></div></div></div>{% else %}<p class="text-muted">No hay cuentas.</p>{% endfor %}</div>
+{% endblock %}

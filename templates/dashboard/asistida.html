@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class='h3 fw-bold'>Dashboard asistida</h1>
+<div class='card gf-card'><div class='card-body'><p class='mb-3'>Bienvenido, {{ current_user.nombre_completo }}.</p><a class="btn btn-primary" href="{{ url_for('asistida.solicitar') }}">Solicitar dinero</a></div></div>
+<h2 class="h5 mt-4">Últimas solicitudes</h2>
+{% for s in solicitudes %}<div class="table-card"><b>{{ s.monto_solicitado|money }}</b> <span class="badge text-bg-info">{{ s.estado }}</span><p class="mb-0">{{ s.comentario_asistida or s.referencia or '-' }}</p></div>{% else %}<p class="text-muted">Sin solicitudes.</p>{% endfor %}
+{% endblock %}

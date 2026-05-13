@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><h1 class="h3 fw-bold">Movimientos</h1><div><a class="btn btn-success" href="{{ url_for('movimientos.nuevo', tipo='ingreso') }}">Ingreso</a><a class="btn btn-danger" href="{{ url_for('movimientos.nuevo', tipo='salida') }}">Salida</a></div></div>
+<div class="table-responsive-mobile"><table class="table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Monto</th></tr></thead><tbody>{% for m in movimientos %}<tr><td data-label="Fecha">{{ m.fecha_movimiento.strftime('%Y-%m-%d %H:%M') if m.fecha_movimiento else '-' }}</td><td data-label="Tipo"><span class="badge text-bg-secondary">{{ m.tipo_movimiento }}</span></td><td data-label="Descripción">{{ m.descripcion or m.referencia or '-' }}</td><td data-label="Monto">{{ m.monto|money }}</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

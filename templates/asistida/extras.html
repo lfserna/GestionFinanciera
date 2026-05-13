@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class='h3 fw-bold'>Mis extras</h1>
+{% for e in extras %}<div class="table-card"><div class="d-flex justify-content-between"><b>{{ e.monto|money }}</b><small>{{ e.fecha_extra }}</small></div><p class="mb-0">{{ e.descripcion or e.referencia or '-' }}</p></div>{% else %}<p class='text-muted'>Sin extras registrados.</p>{% endfor %}
+{% endblock %}

@@ -1,0 +1,7 @@
+<nav class="mobile-bottom-nav d-lg-none">
+  <a href="{{ url_for('dashboard.index') }}"><i class="bi bi-house"></i>Inicio</a>
+  {% if current_user.rol.nombre in ['usuario','admin_asistida'] %}<a href="{{ url_for('movimientos.nuevo', tipo='ingreso') }}"><i class="bi bi-plus-circle"></i>Ingreso</a><a href="{{ url_for('movimientos.nuevo', tipo='salida') }}"><i class="bi bi-dash-circle"></i>Salida</a><a href="{{ url_for('cuentas.index') }}"><i class="bi bi-bank"></i>Cuentas</a>{% endif %}
+  {% if current_user.rol.nombre == 'asistida' %}<a href="{{ url_for('asistida.solicitar') }}"><i class="bi bi-cash"></i>Solicitar</a><a href="{{ url_for('asistida.solicitudes') }}"><i class="bi bi-list-check"></i>Solicitudes</a>{% endif %}
+  {% if current_user.rol.nombre == 'superadmin' %}<a href="{{ url_for('superadmin.usuarios') }}"><i class="bi bi-people"></i>Usuarios</a>{% endif %}
+  <a href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i>Salir</a>
+</nav>

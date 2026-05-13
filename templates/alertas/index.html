@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3 fw-bold">Alertas</h1>{% if current_user.rol.nombre=='superadmin' %}<a class="btn btn-primary" href="{{ url_for('alertas.nueva') }}">Nueva</a>{% endif %}</div>
+{% for a in alertas %}
+<div class="alert {% if a.tipo == 'urgente' %}alert-danger{% elif a.tipo == 'advertencia' %}alert-warning{% elif a.tipo == 'mantenimiento' %}alert-secondary{% else %}alert-info{% endif %} gf-card">
+  <div class="d-flex justify-content-between gap-2">
+    <h5>{{ a.titulo }}</h5>
+    {% if current_user.rol.nombre=='superadmin' %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('alertas.editar', id=a.id) }}">Editar</a>{% endif %}
+  </div>
+  <p class="mb-1">{{ a.mensaje }}</p>
+  <small>Estado: {{ 'Activa' if a.estado else 'Inactiva' }}</small>
+  {% if current_user.rol.nombre=='superadmin' %}
+    <div><small>Destino: {% for d in a.destinatarios %}{{ d.destino_texto }}{% if not loop.last %}, {% endif %}{% else %}Sin destino{% endfor %}</small></div>
+    <div><small>Creada: {{ a.created_at or '-' }}</small></div>
+  {% endif %}
+</div>
+{% else %}<p class="text-muted">Sin alertas.</p>{% endfor %}
+{% endblock %}

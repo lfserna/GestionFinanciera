@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 fw-bold">Auditoría</h1>
+<div class="table-responsive-mobile"><table class="table"><thead><tr><th>Fecha</th><th>Acción</th><th>Tabla</th><th>Registro</th></tr></thead><tbody>{% for i in items %}<tr><td data-label="Fecha">{{ i.created_at }}</td><td data-label="Acción">{{ i.accion }}</td><td data-label="Tabla">{{ i.tabla_afectada or '-' }}</td><td data-label="Registro">{{ i.registro_id or '-' }}</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

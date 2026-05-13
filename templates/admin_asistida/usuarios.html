@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h1 class="h3 fw-bold">Usuarios asistida</h1>{% for u in usuarios %}<div class="table-card"><b>{{ u.nombre_completo }}</b><br><small>{{ u.email }}</small></div>{% else %}<p class="text-muted">Sin usuarios asignados.</p>{% endfor %}{% endblock %}

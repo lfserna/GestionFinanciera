@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class='h3 fw-bold'>Gastos asistida</h1>
+{% for g in gastos %}<div class="table-card"><div class="d-flex justify-content-between"><b>{{ g.monto|money }}</b><span class="badge text-bg-secondary">{{ g.estado_revision }}</span></div><p class="mb-1">{{ g.descripcion }}</p><small>{{ g.fecha_gasto }}</small></div>{% else %}<p class='text-muted'>Sin gastos para revisar.</p>{% endfor %}
+{% endblock %}
