@@ -15,18 +15,77 @@ def money(value):
         return 'Bs 0.00'
 
 
+def _serializar_auditoria(valor):
+    """Convierte valores de auditoría a texto JSON seguro para guardar en MySQL."""
+    if valor is None:
+        return None
+    if isinstance(valor, str):
+        return valor
+    try:
+        import json
+        from decimal import Decimal
+        from datetime import date, datetime
+
+        def default(obj):
+            if isinstance(obj, Decimal):
+                return float(obj)
+            if isinstance(obj, (date, datetime)):
+                return obj.isoformat()
+            return str(obj)
+
+        return json.dumps(valor, ensure_ascii=False, default=default)
+    except Exception:
+        return str(valor)
+
+
 def audit(db, Auditoria, accion, tabla_afectada=None, registro_id=None, usuario_id=None, valor_anterior=None, valor_nuevo=None, ip=None, user_agent=None):
     db.session.add(Auditoria(
         usuario_id=usuario_id,
         accion=accion,
         tabla_afectada=tabla_afectada,
         registro_id=registro_id,
-        valor_anterior=valor_anterior,
-        valor_nuevo=valor_nuevo,
+        valor_anterior=_serializar_auditoria(valor_anterior),
+        valor_nuevo=_serializar_auditoria(valor_nuevo),
         ip=ip,
         user_agent=user_agent,
         created_at=now_local(),
     ))
+
+
+def registrar_auditoria(accion, tabla_afectada=None, registro_id=None, valor_anterior=None, valor_nuevo=None, usuario_id=None):
+    """Registra auditoría usando el usuario y request actuales.
+
+    Se agrega al mismo db.session de la operación para que se confirme con el commit.
+    Si algo falla, no rompe el flujo principal.
+    """
+    try:
+        from flask import request
+        from flask_login import current_user
+        from app.extensions import db
+        from app.models import Auditoria
+
+        user_id = usuario_id
+        if user_id is None:
+            try:
+                if current_user and current_user.is_authenticated:
+                    user_id = current_user.id
+            except Exception:
+                user_id = None
+
+        audit(
+            db,
+            Auditoria,
+            accion=accion,
+            tabla_afectada=tabla_afectada,
+            registro_id=registro_id,
+            usuario_id=user_id,
+            valor_anterior=valor_anterior,
+            valor_nuevo=valor_nuevo,
+            ip=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+        )
+    except Exception:
+        pass
 
 
 def get_local_ip():

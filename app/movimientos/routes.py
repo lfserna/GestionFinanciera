@@ -5,7 +5,7 @@ from app.decorators import roles_required, password_change_required
 from app.forms import MovimientoForm
 from app.models import Cuenta, Categoria, MetodoPago, Movimiento
 from app.extensions import db
-from app.utils import now_local
+from app.utils import now_local, registrar_auditoria
 
 bp = Blueprint('movimientos', __name__, url_prefix='/movimientos')
 
@@ -48,7 +48,6 @@ def nuevo(tipo):
         if tipo == 'salida' and saldo_actual < monto:
             flash('No se permite saldo negativo.', 'danger')
         else:
-            now = now_local()
             cuenta.saldo_actual = saldo_actual + monto if tipo == 'ingreso' else saldo_actual - monto
             mov = Movimiento(
                 usuario_id=current_user.id,
@@ -59,11 +58,17 @@ def nuevo(tipo):
                 monto=monto,
                 referencia=form.referencia.data or None,
                 descripcion=form.descripcion.data or None,
-                fecha_movimiento=form.fecha_movimiento.data or now,
+                fecha_movimiento=form.fecha_movimiento.data or now_local(),
                 estado='activo',
-                created_at=now,
             )
-            db.session.add(mov); db.session.commit()
+            db.session.add(mov)
+            db.session.flush()
+            registrar_auditoria('registrar_movimiento', 'movimientos', mov.id, valor_nuevo={
+                'tipo_movimiento': mov.tipo_movimiento, 'cuenta_id': mov.cuenta_id, 'categoria_id': mov.categoria_id,
+                'metodo_pago_id': mov.metodo_pago_id, 'monto': mov.monto, 'saldo_anterior': saldo_actual,
+                'saldo_nuevo': cuenta.saldo_actual, 'referencia': mov.referencia, 'descripcion': mov.descripcion
+            })
+            db.session.commit()
             flash('Movimiento registrado correctamente.', 'success')
             return redirect(url_for('movimientos.index'))
     return render_template('movimientos/form.html', form=form, titulo='Nuevo ingreso' if tipo=='ingreso' else 'Nueva salida')

@@ -5,7 +5,7 @@ from app.decorators import roles_required, password_change_required
 from app.forms import AlertaForm
 from app.models import Alerta, AlertaDestinatario, AlertaVista, Rol, Usuario
 from app.extensions import db
-from app.utils import now_local
+from app.utils import now_local, registrar_auditoria
 
 bp = Blueprint('alertas', __name__, url_prefix='/alertas')
 
@@ -94,6 +94,10 @@ def nueva():
         db.session.add(alerta)
         db.session.flush()
         _guardar_destinatario(alerta, form)
+        registrar_auditoria('crear_alerta', 'alertas', alerta.id, valor_nuevo={
+            'titulo': alerta.titulo, 'tipo': alerta.tipo, 'estado': bool(alerta.estado),
+            'mostrar_cada_login': bool(alerta.mostrar_cada_login), 'destino': form.destino.data
+        })
         db.session.commit()
         flash('Alerta creada.', 'success')
         return redirect(url_for('alertas.index'))
@@ -118,6 +122,10 @@ def editar(id):
         alerta.fecha_fin = form.fecha_fin.data
         alerta.updated_at = now_local()
         _guardar_destinatario(alerta, form)
+        registrar_auditoria('editar_alerta', 'alertas', alerta.id, valor_nuevo={
+            'titulo': alerta.titulo, 'tipo': alerta.tipo, 'estado': bool(alerta.estado),
+            'mostrar_cada_login': bool(alerta.mostrar_cada_login), 'destino': form.destino.data
+        })
         db.session.commit()
         flash('Alerta actualizada.', 'success')
         return redirect(url_for('alertas.index'))

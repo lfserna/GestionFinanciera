@@ -4,7 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.forms import LoginForm, ChangePasswordForm
 from app.models import Usuario
 from app.extensions import db
-from app.utils import now_local
+from app.utils import now_local, registrar_auditoria
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -40,6 +40,7 @@ def cambiar_password():
         else:
             current_user.set_password(form.password.data)
             current_user.must_change_password = False
+            registrar_auditoria('cambiar_password', 'usuarios', current_user.id, valor_nuevo={'must_change_password': False})
             db.session.commit()
             flash('Contraseña actualizada correctamente.', 'success')
     else:

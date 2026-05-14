@@ -1,14 +1,43 @@
-from flask import Blueprint, render_template, redirect, url_for
+from datetime import timedelta
+from flask import Blueprint, render_template, redirect, url_for, request
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from app.models import Cuenta, Movimiento, SolicitudDinero, GastoAsistida, Usuario
 from app.extensions import db
+from app.utils import now_local
 
 bp = Blueprint('dashboard', __name__)
+
+
+def _rango_periodo(periodo):
+    """Devuelve (inicio, fin, periodo_normalizado). Por defecto usa semana."""
+    now = now_local()
+    periodo = (periodo or 'semana').lower()
+    if periodo not in {'dia', 'semana', 'mes', 'trimestre', 'semestre', 'anio', 'ninguno'}:
+        periodo = 'semana'
+    if periodo == 'ninguno':
+        return None, None, periodo
+    if periodo == 'dia':
+        inicio = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif periodo == 'semana':
+        inicio = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    elif periodo == 'mes':
+        inicio = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif periodo == 'trimestre':
+        mes_inicio = ((now.month - 1) // 3) * 3 + 1
+        inicio = now.replace(month=mes_inicio, day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif periodo == 'semestre':
+        mes_inicio = 1 if now.month <= 6 else 7
+        inicio = now.replace(month=mes_inicio, day=1, hour=0, minute=0, second=0, microsecond=0)
+    else:  # anio
+        inicio = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    return inicio, now, periodo
+
 
 @bp.route('/')
 def home():
     return redirect(url_for('dashboard.index'))
+
 
 @bp.route('/dashboard')
 @login_required
@@ -25,13 +54,59 @@ def index():
         solicitudes = SolicitudDinero.query.filter_by(asistida_user_id=current_user.id).order_by(SolicitudDinero.fecha_solicitud.desc()).limit(5).all()
         return render_template('dashboard/asistida.html', solicitudes=solicitudes)
 
+    periodo_actual = request.args.get('periodo') or 'semana'
+    inicio, fin, periodo_actual = _rango_periodo(periodo_actual)
+
     cuentas = Cuenta.query.filter_by(usuario_id=current_user.id, estado=True).all()
-    saldo_total = sum(float(c.saldo_actual or 0) for c in cuentas)
+    saldo_general_con_ahorros = sum(float(c.saldo_actual or 0) for c in cuentas)
     saldo_efectivo = sum(float(c.saldo_actual or 0) for c in cuentas if c.tipo_cuenta == 'efectivo')
     saldo_bancos = sum(float(c.saldo_actual or 0) for c in cuentas if c.tipo_cuenta in ['banco', 'billetera_movil', 'caja_ahorro'])
     saldo_diarias = sum(float(c.saldo_actual or 0) for c in cuentas if c.uso_cuenta == 'diaria')
     saldo_ahorro = sum(float(c.saldo_actual or 0) for c in cuentas if c.uso_cuenta == 'ahorro')
-    ingresos = db.session.query(func.coalesce(func.sum(Movimiento.monto),0)).filter_by(usuario_id=current_user.id,tipo_movimiento='ingreso',estado='activo').scalar()
-    gastos = db.session.query(func.coalesce(func.sum(Movimiento.monto),0)).filter_by(usuario_id=current_user.id,tipo_movimiento='salida',estado='activo').scalar()
-    ultimos = Movimiento.query.filter_by(usuario_id=current_user.id).order_by(Movimiento.fecha_movimiento.desc()).limit(5).all()
-    return render_template('dashboard/usuario.html', cuentas=cuentas, saldo_total=saldo_total, saldo_efectivo=saldo_efectivo, saldo_bancos=saldo_bancos, saldo_diarias=saldo_diarias, saldo_ahorro=saldo_ahorro, ingresos=ingresos, gastos=gastos, ultimos=ultimos)
+
+    # Para la tarjeta principal del dashboard, saldo_total ahora representa dinero disponible diario.
+    # No incluye cuentas de ahorro.
+    saldo_total = saldo_diarias
+    saldo_disponible = saldo_diarias
+
+    base_movs = Movimiento.query.filter_by(usuario_id=current_user.id, estado='activo')
+    if inicio is not None:
+        base_movs = base_movs.filter(Movimiento.fecha_movimiento >= inicio, Movimiento.fecha_movimiento <= fin)
+
+    ingresos = db.session.query(func.coalesce(func.sum(Movimiento.monto), 0)).filter(
+        Movimiento.usuario_id == current_user.id,
+        Movimiento.tipo_movimiento == 'ingreso',
+        Movimiento.estado == 'activo',
+        *( [Movimiento.fecha_movimiento >= inicio, Movimiento.fecha_movimiento <= fin] if inicio is not None else [] )
+    ).scalar()
+    gastos = db.session.query(func.coalesce(func.sum(Movimiento.monto), 0)).filter(
+        Movimiento.usuario_id == current_user.id,
+        Movimiento.tipo_movimiento == 'salida',
+        Movimiento.estado == 'activo',
+        *( [Movimiento.fecha_movimiento >= inicio, Movimiento.fecha_movimiento <= fin] if inicio is not None else [] )
+    ).scalar()
+    ultimos = base_movs.order_by(Movimiento.fecha_movimiento.desc()).limit(5).all()
+
+    periodos_dashboard = [
+        ('dia', 'Diario'), ('semana', 'Semana'), ('mes', 'Mensual'),
+        ('trimestre', 'Trimestral'), ('semestre', 'Semestral'), ('anio', 'Anual')
+    ]
+
+    return render_template(
+        'dashboard/usuario.html',
+        cuentas=cuentas,
+        saldo_total=saldo_total,
+        saldo_disponible=saldo_disponible,
+        saldo_general_con_ahorros=saldo_general_con_ahorros,
+        saldo_efectivo=saldo_efectivo,
+        saldo_bancos=saldo_bancos,
+        saldo_diarias=saldo_diarias,
+        saldo_ahorro=saldo_ahorro,
+        ingresos=ingresos,
+        gastos=gastos,
+        ultimos=ultimos,
+        periodo_actual=periodo_actual,
+        periodos_dashboard=periodos_dashboard,
+        filtro_inicio=inicio,
+        filtro_fin=fin,
+    )

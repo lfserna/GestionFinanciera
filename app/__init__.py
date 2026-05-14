@@ -36,6 +36,111 @@ def create_app():
         from .utils import money
         return money(value)
 
+
+
+    @app.template_filter('datetime_short')
+    def datetime_short_filter(value):
+        if not value:
+            return ''
+        try:
+            return value.strftime('%d/%m/%Y %H:%M')
+        except Exception:
+            return str(value)
+
+    def _money_input_mask_script():
+        return r"""
+<script>
+(function () {
+  function moneyTargets() {
+    return Array.from(document.querySelectorAll('input')).filter(function (input) {
+      var name = (input.name || '').toLowerCase();
+      return name.includes('monto') || name === 'saldo_inicial' || name === 'saldo_actual' || name === 'monto_limite' || name === 'monto_objetivo';
+    });
+  }
+  function onlyDigits(value) {
+    return String(value || '').replace(/\D/g, '');
+  }
+  function formatCentsFromDigits(digits) {
+    digits = onlyDigits(digits).replace(/^0+(?=\d)/, '');
+    if (!digits) digits = '0';
+    var cents = parseInt(digits, 10);
+    if (isNaN(cents)) cents = 0;
+    return (cents / 100).toFixed(2);
+  }
+  function initMoneyInput(input) {
+    if (input.dataset.moneyMaskReady === '1') return;
+    input.dataset.moneyMaskReady = '1';
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('autocomplete', 'off');
+    if (!input.placeholder) input.placeholder = '0.00';
+    input.addEventListener('input', function () {
+      var digits = onlyDigits(input.value);
+      input.value = formatCentsFromDigits(digits);
+      try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
+    });
+    input.addEventListener('focus', function () {
+      if (!input.value) input.value = '0.00';
+    });
+  }
+  function initAll() { moneyTargets().forEach(initMoneyInput); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAll);
+  else initAll();
+})();
+</script>
+"""
+
+    def _dashboard_filter_bar_script():
+        from flask import request
+        if request.path != '/dashboard':
+            return ''
+        current = request.args.get('periodo') or 'semana'
+        buttons = [
+            ('dia', 'Diario'), ('semana', 'Semana'), ('mes', 'Mensual'),
+            ('trimestre', 'Trimestral'), ('semestre', 'Semestral'), ('anio', 'Anual')
+        ]
+        html_buttons = []
+        for key, label in buttons:
+            active = (current == key)
+            href = '/dashboard?periodo=ninguno' if active else f'/dashboard?periodo={key}'
+            cls = 'btn btn-sm btn-primary me-1 mb-1' if active else 'btn btn-sm btn-outline-primary me-1 mb-1'
+            html_buttons.append(f'<a class="{cls}" href="{href}">{label}</a>')
+        if current == 'ninguno':
+            html_buttons.append('<span class="badge text-bg-secondary ms-1">Sin filtro</span>')
+        return """
+<script>
+(function () {
+  function injectBar() {
+    if (document.getElementById('dashboard-period-filter-bar')) return;
+    var bar = document.createElement('div');
+    bar.id = 'dashboard-period-filter-bar';
+    bar.className = 'card shadow-sm mb-3';
+    bar.innerHTML = '<div class="card-body py-2"><div class="d-flex flex-wrap align-items-center gap-1"><strong class="me-2">Filtro:</strong>""" + ''.join(html_buttons) + """</div><small class="text-muted">Por defecto se muestra la semana. Toca de nuevo un filtro activo para quitarlo.</small></div>';
+    var target = document.querySelector('main .container, main .container-fluid, .container, .container-fluid, main, body');
+    if (target && target.firstChild) target.insertBefore(bar, target.firstChild);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectBar);
+  else injectBar();
+})();
+</script>
+"""
+
+    @app.after_request
+    def inject_global_ui(response):
+        try:
+            content_type = response.headers.get('Content-Type', '')
+            if response.status_code == 200 and 'text/html' in content_type:
+                html = response.get_data(as_text=True)
+                scripts = _money_input_mask_script() + _dashboard_filter_bar_script()
+                if '</body>' in html:
+                    html = html.replace('</body>', scripts + '</body>')
+                else:
+                    html += scripts
+                response.set_data(html)
+                response.headers['Content-Length'] = str(len(response.get_data()))
+        except Exception:
+            pass
+        return response
+
     @app.cli.command('init-db')
     def init_db_command():
         db.create_all()

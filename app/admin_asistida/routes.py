@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from app.decorators import roles_required, password_change_required
 from app.models import Usuario, SolicitudDinero, EntregaAsistida, GastoAsistida, ExtraAsistida
 from app.extensions import db
-from app.utils import now_local
+from app.utils import now_local, registrar_auditoria
 
 bp = Blueprint('admin_asistida', __name__, url_prefix='/admin-asistida')
 
@@ -31,10 +31,17 @@ def solicitudes():
 def responder(id, accion):
     sol = SolicitudDinero.query.filter_by(id=id, admin_user_id=current_user.id).first_or_404()
     if accion in ['aprobar','rechazar'] and sol.estado == 'pendiente':
+        estado_anterior = sol.estado
+        monto_aprobado_anterior = sol.monto_aprobado
         sol.estado = 'aprobada' if accion == 'aprobar' else 'rechazada'
         sol.fecha_respuesta = now_local()
         if accion == 'aprobar':
             sol.monto_aprobado = sol.monto_solicitado
+        registrar_auditoria('responder_solicitud_dinero', 'solicitudes_dinero', sol.id, valor_anterior={
+            'estado': estado_anterior, 'monto_aprobado': monto_aprobado_anterior
+        }, valor_nuevo={
+            'estado': sol.estado, 'monto_aprobado': sol.monto_aprobado, 'accion': accion
+        })
         db.session.commit()
         flash('Solicitud actualizada.', 'success')
     return redirect(url_for('admin_asistida.solicitudes'))

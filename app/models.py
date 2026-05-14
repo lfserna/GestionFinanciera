@@ -335,47 +335,19 @@ class Auditoria(db.Model):
     user_agent = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=now_local, nullable=False)
 
-# -----------------------------------------------------------------------------
-# Fechas automáticas robustas
-# -----------------------------------------------------------------------------
-# Algunas instalaciones de MySQL rechazan INSERTs donde created_at llega como
-# NULL. Además de los defaults declarados en las columnas, estos listeners
-# garantizan que cualquier modelo con created_at/updated_at reciba fecha antes
-# de guardar, aunque la ruta no la haya asignado manualmente.
 
-_TIMESTAMPED_MODELS = (
-    Rol,
-    Usuario,
-    Cuenta,
-    MetodoPago,
-    Categoria,
-    Movimiento,
-    Transferencia,
-    SolicitudDinero,
-    EntregaAsistida,
-    GastoAsistida,
-    ExtraAsistida,
-    ArqueoAsistida,
-    MetaAhorro,
-    Presupuesto,
-    Alerta,
-    AlertaDestinatario,
-    AlertaVista,
-    Auditoria,
-)
-
-
-def _set_created_at(mapper, connection, target):
+# Protección global: evita INSERT/UPDATE con created_at o updated_at en NULL.
+# Esto es importante porque MySQL rechaza created_at NULL en las tablas reales.
+@event.listens_for(db.Model, 'before_insert', propagate=True)
+def _set_timestamps_before_insert(mapper, connection, target):
+    now = now_local()
     if hasattr(target, 'created_at') and getattr(target, 'created_at', None) is None:
-        target.created_at = now_local()
+        target.created_at = now
+    if hasattr(target, 'updated_at') and getattr(target, 'updated_at', None) is None:
+        target.updated_at = now
 
 
-def _set_updated_at(mapper, connection, target):
+@event.listens_for(db.Model, 'before_update', propagate=True)
+def _set_timestamps_before_update(mapper, connection, target):
     if hasattr(target, 'updated_at'):
         target.updated_at = now_local()
-
-
-for _model in _TIMESTAMPED_MODELS:
-    event.listen(_model, 'before_insert', _set_created_at)
-    event.listen(_model, 'before_update', _set_updated_at)
-

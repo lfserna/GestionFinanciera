@@ -4,7 +4,7 @@ from app.decorators import roles_required, password_change_required
 from app.forms import CuentaForm
 from app.models import Cuenta
 from app.extensions import db
-from app.utils import now_local
+from app.utils import registrar_auditoria
 
 bp = Blueprint('cuentas', __name__, url_prefix='/cuentas')
 
@@ -23,7 +23,6 @@ def index():
 def nueva():
     form = CuentaForm()
     if form.validate_on_submit():
-        now = now_local()
         saldo = form.saldo_inicial.data or 0
         cuenta = Cuenta(
             usuario_id=current_user.id,
@@ -36,9 +35,15 @@ def nueva():
             saldo_inicial=saldo,
             saldo_actual=saldo,
             estado=True,
-            created_at=now,
         )
-        db.session.add(cuenta); db.session.commit()
+        db.session.add(cuenta)
+        db.session.flush()
+        registrar_auditoria('crear_cuenta', 'cuentas', cuenta.id, valor_nuevo={
+            'nombre': cuenta.nombre, 'tipo_cuenta': cuenta.tipo_cuenta, 'uso_cuenta': cuenta.uso_cuenta,
+            'banco_nombre': cuenta.banco_nombre, 'numero_cuenta': cuenta.numero_cuenta,
+            'moneda': cuenta.moneda, 'saldo_inicial': cuenta.saldo_inicial, 'saldo_actual': cuenta.saldo_actual
+        })
+        db.session.commit()
         flash('Cuenta creada correctamente.', 'success')
         return redirect(url_for('cuentas.index'))
     return render_template('cuentas/form.html', form=form, titulo='Nueva cuenta')

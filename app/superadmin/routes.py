@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from app.decorators import roles_required, password_change_required
 from app.models import Usuario, Rol, Auditoria
 from app.extensions import db
-from app.utils import now_local
+from app.utils import registrar_auditoria
 
 bp = Blueprint('superadmin', __name__, url_prefix='/superadmin')
 
@@ -24,7 +24,6 @@ def usuarios():
 @roles_required('superadmin')
 @password_change_required
 def crear_usuario():
-    now = now_local()
     u = Usuario(
         nombre=request.form['nombre'].strip(),
         apellido=request.form['apellido'].strip(),
@@ -35,9 +34,14 @@ def crear_usuario():
         password_hash=HASH_HOLA123,
         must_change_password=True,
         estado=True,
-        created_at=now,
     )
-    db.session.add(u); db.session.commit()
+    db.session.add(u)
+    db.session.flush()
+    registrar_auditoria('crear_usuario', 'usuarios', u.id, valor_nuevo={
+        'nombre': u.nombre, 'apellido': u.apellido, 'email': u.email, 'rol_id': u.rol_id,
+        'admin_asistida_id': u.admin_asistida_id, 'estado': bool(u.estado)
+    })
+    db.session.commit()
     flash('Usuario creado con contraseña temporal hola123.', 'success')
     return redirect(url_for('superadmin.usuarios'))
 
@@ -47,7 +51,9 @@ def crear_usuario():
 @password_change_required
 def toggle_usuario(id):
     u = Usuario.query.get_or_404(id)
+    estado_anterior = bool(u.estado)
     u.estado = not u.estado
+    registrar_auditoria('cambiar_estado_usuario', 'usuarios', u.id, valor_anterior={'estado': estado_anterior}, valor_nuevo={'estado': bool(u.estado)})
     db.session.commit()
     flash('Estado actualizado.', 'success')
     return redirect(url_for('superadmin.usuarios'))
