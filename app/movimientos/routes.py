@@ -48,6 +48,7 @@ def nuevo(tipo):
         if tipo == 'salida' and saldo_actual < monto:
             flash('No se permite saldo negativo.', 'danger')
         else:
+            now = now_local()
             cuenta.saldo_actual = saldo_actual + monto if tipo == 'ingreso' else saldo_actual - monto
             mov = Movimiento(
                 usuario_id=current_user.id,
@@ -58,8 +59,9 @@ def nuevo(tipo):
                 monto=monto,
                 referencia=form.referencia.data or None,
                 descripcion=form.descripcion.data or None,
-                fecha_movimiento=form.fecha_movimiento.data or now_local(),
+                fecha_movimiento=form.fecha_movimiento.data or now,
                 estado='activo',
+                created_at=now,
             )
             db.session.add(mov); db.session.commit()
             flash('Movimiento registrado correctamente.', 'success')

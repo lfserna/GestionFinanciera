@@ -5,6 +5,7 @@ from app.decorators import roles_required, password_change_required
 from app.forms import SolicitudForm
 from app.models import Categoria, SolicitudDinero, EntregaAsistida, GastoAsistida, ExtraAsistida
 from app.extensions import db
+from app.utils import now_local
 
 bp = Blueprint('asistida', __name__, url_prefix='/asistida')
 
@@ -27,6 +28,7 @@ def solicitar():
         if not current_user.admin_asistida_id:
             flash('No tienes un admin_asistida asignado.', 'danger')
         else:
+            now = now_local()
             sol = SolicitudDinero(
                 asistida_user_id=current_user.id,
                 admin_user_id=current_user.admin_asistida_id,
@@ -36,6 +38,8 @@ def solicitar():
                 referencia=form.referencia.data or None,
                 comentario_asistida=form.comentario_asistida.data,
                 estado='pendiente',
+                fecha_solicitud=now,
+                created_at=now,
             )
             db.session.add(sol); db.session.commit()
             flash('Solicitud registrada correctamente.', 'success')

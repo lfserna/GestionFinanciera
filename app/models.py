@@ -1,4 +1,5 @@
 from flask_login import UserMixin
+from sqlalchemy import event
 from werkzeug.security import check_password_hash, generate_password_hash
 from .extensions import db, login_manager
 from .utils import now_local
@@ -10,8 +11,8 @@ class Rol(db.Model):
     nombre = db.Column(db.String(50), unique=True, nullable=False)
     descripcion = db.Column(db.String(150))
     estado = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
 
 class Usuario(UserMixin, db.Model):
@@ -27,8 +28,8 @@ class Usuario(UserMixin, db.Model):
     must_change_password = db.Column(db.Boolean, default=True, nullable=False)
     estado = db.Column(db.Boolean, default=True, nullable=False)
     ultimo_login = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     rol = db.relationship('Rol')
     admin_asistida = db.relationship('Usuario', remote_side=[id], backref='asistidos')
@@ -62,8 +63,8 @@ class Cuenta(db.Model):
     saldo_inicial = db.Column(db.Numeric(12, 2), default=0, nullable=False)
     saldo_actual = db.Column(db.Numeric(12, 2), default=0, nullable=False)
     estado = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     usuario = db.relationship('Usuario', backref='cuentas')
 
@@ -74,8 +75,8 @@ class MetodoPago(db.Model):
     nombre = db.Column(db.String(80), unique=True, nullable=False)
     descripcion = db.Column(db.String(150))
     estado = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
 
 class Categoria(db.Model):
@@ -88,8 +89,8 @@ class Categoria(db.Model):
     color = db.Column(db.String(30))
     icono = db.Column(db.String(50))
     estado = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     usuario = db.relationship('Usuario', backref='categorias')
 
@@ -111,8 +112,8 @@ class Movimiento(db.Model):
     motivo_anulacion = db.Column(db.String(255))
     anulado_por = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
     fecha_anulacion = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     usuario = db.relationship('Usuario', foreign_keys=[usuario_id])
     cuenta = db.relationship('Cuenta')
@@ -133,8 +134,8 @@ class Transferencia(db.Model):
     referencia = db.Column(db.String(120))
     descripcion = db.Column(db.String(255))
     estado = db.Column(db.String(20), default='activa', nullable=False)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     cuenta_origen = db.relationship('Cuenta', foreign_keys=[cuenta_origen_id])
     cuenta_destino = db.relationship('Cuenta', foreign_keys=[cuenta_destino_id])
@@ -156,8 +157,8 @@ class SolicitudDinero(db.Model):
     comentario_asistida = db.Column(db.String(255))
     comentario_admin = db.Column(db.String(255))
     estado = db.Column(db.String(30), default='pendiente', nullable=False)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     asistida = db.relationship('Usuario', foreign_keys=[asistida_user_id])
     admin = db.relationship('Usuario', foreign_keys=[admin_user_id])
@@ -178,8 +179,8 @@ class EntregaAsistida(db.Model):
     referencia = db.Column(db.String(120))
     observacion = db.Column(db.String(255))
     estado = db.Column(db.String(30), default='activa', nullable=False)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     solicitud = db.relationship('SolicitudDinero')
     asistida = db.relationship('Usuario', foreign_keys=[asistida_user_id])
@@ -200,8 +201,8 @@ class GastoAsistida(db.Model):
     comprobante_path = db.Column(db.String(255))
     estado_revision = db.Column(db.String(30), default='pendiente', nullable=False)
     observacion_admin = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     asistida = db.relationship('Usuario')
     entrega = db.relationship('EntregaAsistida')
@@ -216,8 +217,8 @@ class ExtraAsistida(db.Model):
     fecha_extra = db.Column(db.DateTime, default=now_local, nullable=False)
     referencia = db.Column(db.String(120))
     descripcion = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     asistida = db.relationship('Usuario')
 
@@ -232,27 +233,27 @@ class ArqueoAsistida(db.Model):
     monto_entregado = db.Column(db.Numeric(12, 2), nullable=False)
     monto_gastado = db.Column(db.Numeric(12, 2), nullable=False)
     monto_restante_esperado = db.Column(db.Numeric(12, 2), nullable=False)
-    monto_restante_declarado = db.Column(db.Numeric(12, 2), nullable=False)
-    diferencia = db.Column(db.Numeric(12, 2), nullable=False)
+    monto_restante_declarado = db.Column(db.Numeric(12, 2))
+    diferencia = db.Column(db.Numeric(12, 2))
     estado = db.Column(db.String(40), default='abierto', nullable=False)
     observacion = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
 
 class MetaAhorro(db.Model):
     __tablename__ = 'metas_ahorro'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
-    cuenta_id = db.Column(db.Integer, db.ForeignKey('cuentas.id'), nullable=False)
+    cuenta_id = db.Column(db.Integer, db.ForeignKey('cuentas.id'), nullable=True)
     nombre = db.Column(db.String(120), nullable=False)
     monto_objetivo = db.Column(db.Numeric(12, 2), nullable=False)
     monto_actual = db.Column(db.Numeric(12, 2), default=0, nullable=False)
-    fecha_inicio = db.Column(db.Date)
+    fecha_inicio = db.Column(db.Date, default=lambda: now_local().date(), nullable=False)
     fecha_objetivo = db.Column(db.Date)
     estado = db.Column(db.String(20), default='activa', nullable=False)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
 
 class Presupuesto(db.Model):
@@ -262,11 +263,11 @@ class Presupuesto(db.Model):
     categoria_id = db.Column(db.Integer, db.ForeignKey('categorias.id'), nullable=False)
     monto_limite = db.Column(db.Numeric(12, 2), nullable=False)
     periodo = db.Column(db.String(20), default='mensual', nullable=False)
-    fecha_inicio = db.Column(db.Date)
+    fecha_inicio = db.Column(db.Date, default=lambda: now_local().date(), nullable=False)
     fecha_fin = db.Column(db.Date)
     estado = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
 
 class Alerta(db.Model):
@@ -276,12 +277,12 @@ class Alerta(db.Model):
     mensaje = db.Column(db.Text, nullable=False)
     tipo = db.Column(db.String(30), default='info', nullable=False)
     estado = db.Column(db.Boolean, default=True, nullable=False)
-    mostrar_cada_login = db.Column(db.Boolean, default=False, nullable=False)
+    mostrar_cada_login = db.Column(db.Boolean, default=True, nullable=False)
     fecha_inicio = db.Column(db.DateTime)
     fecha_fin = db.Column(db.DateTime)
     created_by = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     destinatarios = db.relationship('AlertaDestinatario', backref='alerta', cascade='all, delete-orphan')
 
@@ -293,8 +294,8 @@ class AlertaDestinatario(db.Model):
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
     rol_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     es_global = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
     usuario = db.relationship('Usuario', foreign_keys=[usuario_id])
     rol = db.relationship('Rol', foreign_keys=[rol_id])
@@ -316,9 +317,9 @@ class AlertaVista(db.Model):
     alerta_id = db.Column(db.Integer, db.ForeignKey('alertas.id'), nullable=False)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     visto = db.Column(db.Boolean, default=True, nullable=False)
-    fecha_visto = db.Column(db.DateTime, default=now_local)
-    created_at = db.Column(db.DateTime)
-    updated_at = db.Column(db.DateTime)
+    fecha_visto = db.Column(db.DateTime, default=now_local, nullable=False)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
 
 
 class Auditoria(db.Model):
@@ -332,4 +333,49 @@ class Auditoria(db.Model):
     valor_nuevo = db.Column(db.Text)
     ip = db.Column(db.String(80))
     user_agent = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+
+# -----------------------------------------------------------------------------
+# Fechas automáticas robustas
+# -----------------------------------------------------------------------------
+# Algunas instalaciones de MySQL rechazan INSERTs donde created_at llega como
+# NULL. Además de los defaults declarados en las columnas, estos listeners
+# garantizan que cualquier modelo con created_at/updated_at reciba fecha antes
+# de guardar, aunque la ruta no la haya asignado manualmente.
+
+_TIMESTAMPED_MODELS = (
+    Rol,
+    Usuario,
+    Cuenta,
+    MetodoPago,
+    Categoria,
+    Movimiento,
+    Transferencia,
+    SolicitudDinero,
+    EntregaAsistida,
+    GastoAsistida,
+    ExtraAsistida,
+    ArqueoAsistida,
+    MetaAhorro,
+    Presupuesto,
+    Alerta,
+    AlertaDestinatario,
+    AlertaVista,
+    Auditoria,
+)
+
+
+def _set_created_at(mapper, connection, target):
+    if hasattr(target, 'created_at') and getattr(target, 'created_at', None) is None:
+        target.created_at = now_local()
+
+
+def _set_updated_at(mapper, connection, target):
+    if hasattr(target, 'updated_at'):
+        target.updated_at = now_local()
+
+
+for _model in _TIMESTAMPED_MODELS:
+    event.listen(_model, 'before_insert', _set_created_at)
+    event.listen(_model, 'before_update', _set_updated_at)
+

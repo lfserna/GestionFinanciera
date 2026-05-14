@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from app.decorators import roles_required, password_change_required
 from app.models import Usuario, Rol, Auditoria
 from app.extensions import db
+from app.utils import now_local
 
 bp = Blueprint('superadmin', __name__, url_prefix='/superadmin')
 
@@ -23,6 +24,7 @@ def usuarios():
 @roles_required('superadmin')
 @password_change_required
 def crear_usuario():
+    now = now_local()
     u = Usuario(
         nombre=request.form['nombre'].strip(),
         apellido=request.form['apellido'].strip(),
@@ -33,6 +35,7 @@ def crear_usuario():
         password_hash=HASH_HOLA123,
         must_change_password=True,
         estado=True,
+        created_at=now,
     )
     db.session.add(u); db.session.commit()
     flash('Usuario creado con contraseña temporal hola123.', 'success')
