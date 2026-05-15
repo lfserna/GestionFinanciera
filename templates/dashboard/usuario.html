@@ -1,18 +1,27 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1 class="h3 fw-bold mb-3">Dashboard</h1>
-<div class="row g-3">
-  <div class="col-12 col-md-4"><div class="card gf-card"><div class="card-body"><span class="text-muted">Saldo total</span><h2>{{ saldo_total|money }}</h2></div></div></div>
-  <div class="col-6 col-md-4"><div class="card gf-card"><div class="card-body"><span class="text-muted">Ingresos</span><h3>{{ ingresos|money }}</h3></div></div></div>
-  <div class="col-6 col-md-4"><div class="card gf-card"><div class="card-body"><span class="text-muted">Gastos</span><h3>{{ gastos|money }}</h3></div></div></div>
-  <div class="col-6 col-md-3"><div class="card gf-card"><div class="card-body"><span class="text-muted">Efectivo</span><h3>{{ saldo_efectivo|money }}</h3></div></div></div>
-  <div class="col-6 col-md-3"><div class="card gf-card"><div class="card-body"><span class="text-muted">Bancos/Billeteras</span><h3>{{ saldo_bancos|money }}</h3></div></div></div>
-  <div class="col-6 col-md-3"><div class="card gf-card"><div class="card-body"><span class="text-muted">Cuentas diarias</span><h3>{{ saldo_diarias|money }}</h3></div></div></div>
-  <div class="col-6 col-md-3"><div class="card gf-card"><div class="card-body"><span class="text-muted">Ahorro</span><h3>{{ saldo_ahorro|money }}</h3></div></div></div>
+
+<div class="row g-3 dashboard-summary">
+  <div class="col-12 col-md-4 summary-card summary-total"><div class="card gf-card"><div class="card-body"><span class="text-muted">Saldo disponible</span><h2>{{ saldo_total|money }}</h2><small class="text-muted">Cuentas diarias</small></div></div></div>
+  <div class="col-6 col-md-4 summary-card summary-income"><div class="card gf-card"><div class="card-body"><span class="text-muted">Ingresos</span><h3>{{ ingresos|money }}</h3></div></div></div>
+  <div class="col-6 col-md-4 summary-card summary-expense"><div class="card gf-card"><div class="card-body"><span class="text-muted">Gastos</span><h3>{{ gastos|money }}</h3></div></div></div>
+  <div class="col-6 col-md-3 summary-card summary-cash"><div class="card gf-card"><div class="card-body"><span class="text-muted">Efectivo</span><h3>{{ saldo_efectivo|money }}</h3></div></div></div>
+  <div class="col-6 col-md-3 summary-card summary-bank"><div class="card gf-card"><div class="card-body"><span class="text-muted">Bancos/Billeteras</span><h3>{{ saldo_bancos|money }}</h3></div></div></div>
+  <div class="col-6 col-md-3 summary-card summary-daily"><div class="card gf-card"><div class="card-body"><span class="text-muted">Cuentas diarias</span><h3>{{ saldo_diarias|money }}</h3></div></div></div>
+  <div class="col-6 col-md-3 summary-card summary-saving"><div class="card gf-card"><div class="card-body"><span class="text-muted">Ahorro</span><h3>{{ saldo_ahorro|money }}</h3></div></div></div>
 </div>
+
 <div class="row g-3 mt-1">
   <div class="col-lg-6"><div class="card gf-card"><div class="card-body"><h5>Ingresos vs gastos</h5><canvas id="chart1"></canvas></div></div></div>
-  <div class="col-lg-6"><div class="card gf-card"><div class="card-body"><h5>Últimos movimientos</h5>{% for m in ultimos %}<div class="d-flex justify-content-between border-bottom py-2"><span>{{ m.descripcion or m.referencia or m.tipo_movimiento }}</span><b>{{ m.monto|money }}</b></div>{% else %}<p class="text-muted">Sin movimientos.</p>{% endfor %}</div></div></div>
+  <div class="col-lg-6"><div class="card gf-card"><div class="card-body"><h5>Últimos movimientos</h5>{% for m in ultimos %}
+    {% set es_entrada = m.tipo_movimiento in ['ingreso','transferencia_entrada'] %}
+    {% set es_salida = m.tipo_movimiento in ['salida','transferencia_salida'] %}
+    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+      <div><span>{{ m.descripcion or m.referencia or m.tipo_movimiento }}</span><br><small class="text-muted">{{ m.cuenta.nombre if m.cuenta else '' }}</small></div>
+      <b class="{{ 'text-success' if es_entrada else 'text-danger' if es_salida else '' }}">{{ '+' if es_entrada else '-' if es_salida else '' }}{{ m.monto|money }}</b>
+    </div>
+  {% else %}<p class="text-muted">Sin movimientos.</p>{% endfor %}</div></div></div>
 </div>
 {% endblock %}
 {% block scripts %}<script>new Chart(document.getElementById('chart1'),{type:'bar',data:{labels:['Ingresos','Gastos'],datasets:[{label:'Monto',data:[{{ ingresos or 0 }},{{ gastos or 0 }}]}]}});</script>{% endblock %}
