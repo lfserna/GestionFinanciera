@@ -1,5 +1,50 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3"><h1 class="h3 fw-bold">Movimientos</h1><div><a class="btn btn-success" href="{{ url_for('movimientos.nuevo', tipo='ingreso') }}">Ingreso</a><a class="btn btn-danger" href="{{ url_for('movimientos.nuevo', tipo='salida') }}">Salida</a></div></div>
-<div class="table-responsive-mobile"><table class="table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Monto</th></tr></thead><tbody>{% for m in movimientos %}<tr><td data-label="Fecha">{{ m.fecha_movimiento.strftime('%Y-%m-%d %H:%M') if m.fecha_movimiento else '-' }}</td><td data-label="Tipo"><span class="badge text-bg-secondary">{{ m.tipo_movimiento }}</span></td><td data-label="Descripción">{{ m.descripcion or m.referencia or '-' }}</td><td data-label="Monto">{{ m.monto|money }}</td></tr>{% endfor %}</tbody></table></div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 fw-bold">Movimientos</h1>
+  <div>
+    <a class="btn btn-success" href="{{ url_for('movimientos.nuevo', tipo='ingreso') }}">Ingreso</a>
+    <a class="btn btn-danger" href="{{ url_for('movimientos.nuevo', tipo='salida') }}">Salida</a>
+  </div>
+</div>
+
+<div class="card gf-card mb-3">
+  <div class="card-body">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <span class="fw-semibold me-1">Filtrar:</span>
+      {% for valor, texto in periodos_movimientos %}
+        <a class="btn btn-sm {{ 'btn-primary' if periodo_actual == valor else 'btn-outline-primary' }}" href="{{ url_for('movimientos.index', periodo=valor) }}">{{ texto }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="table-responsive-mobile">
+  <table class="table align-middle">
+    <thead>
+      <tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Cuenta</th><th class="text-end">Monto</th></tr>
+    </thead>
+    <tbody>
+      {% for m in movimientos %}
+        {% set es_entrada = m.tipo_movimiento in ['ingreso','transferencia_entrada'] %}
+        {% set es_salida = m.tipo_movimiento in ['salida','transferencia_salida'] %}
+        <tr class="{{ 'mov-row-in' if es_entrada else 'mov-row-out' if es_salida else '' }}">
+          <td data-label="Fecha">{{ m.fecha_movimiento.strftime('%Y-%m-%d %H:%M') if m.fecha_movimiento else '-' }}</td>
+          <td data-label="Tipo">
+            <span class="badge {{ 'text-bg-success' if es_entrada else 'text-bg-danger' if es_salida else 'text-bg-secondary' }}">
+              {{ '+' if es_entrada else '-' if es_salida else '' }} {{ m.tipo_movimiento.replace('_',' ') }}
+            </span>
+          </td>
+          <td data-label="Descripción">{{ m.descripcion or m.referencia or '-' }}</td>
+          <td data-label="Cuenta">{{ m.cuenta.nombre if m.cuenta else '-' }}</td>
+          <td data-label="Monto" class="text-end fw-bold {{ 'text-success' if es_entrada else 'text-danger' if es_salida else '' }}">
+            {{ '+' if es_entrada else '-' if es_salida else '' }}{{ m.monto|money }}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="text-muted text-center py-4">Sin movimientos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}
