@@ -45,6 +45,11 @@ def _resumen_usuario(periodo_actual='mes'):
     saldo_diarias = sum(float(c.saldo_actual or 0) for c in cuentas_diarias)
     saldo_ahorro = sum(float(c.saldo_actual or 0) for c in cuentas if c.uso_cuenta == 'ahorro')
 
+    # Saldo disponible principal: dinero de cuentas diarias + efectivo.
+    # Si una cuenta de efectivo también está marcada como diaria, no se duplica.
+    efectivo_diario = sum(float(c.saldo_actual or 0) for c in cuentas if c.tipo_cuenta == 'efectivo' and c.uso_cuenta == 'diaria')
+    saldo_disponible = saldo_diarias + saldo_efectivo - efectivo_diario
+
     base_movs = Movimiento.query.filter_by(usuario_id=current_user.id, estado='activo')
     if inicio is not None:
         base_movs = base_movs.filter(Movimiento.fecha_movimiento >= inicio, Movimiento.fecha_movimiento <= fin)
@@ -67,8 +72,8 @@ def _resumen_usuario(periodo_actual='mes'):
     return {
         'cuentas': cuentas,
         'cuentas_diarias': cuentas_diarias,
-        'saldo_total': saldo_diarias,
-        'saldo_disponible': saldo_diarias,
+        'saldo_total': saldo_disponible,
+        'saldo_disponible': saldo_disponible,
         'saldo_general_con_ahorros': saldo_general_con_ahorros,
         'saldo_efectivo': saldo_efectivo,
         'saldo_bancos': saldo_bancos,
