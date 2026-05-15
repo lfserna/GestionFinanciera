@@ -1,15 +1,93 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1 class="h3 fw-bold mb-3">{{ titulo }}</h1>
-<div class="card gf-card"><div class="card-body"><form method="post">
-{{ form.hidden_tag() }}
-<label class="form-label gf-label">Cuenta <small class="required">Obligatorio</small></label>{{ form.cuenta_id(class='form-select form-select-lg') }}
-<label class="form-label gf-label mt-3">Categoría <small class="optional">Opcional</small></label>{{ form.categoria_id(class='form-select form-select-lg') }}
-<label class="form-label gf-label mt-3">Método de pago <small class="optional">Opcional</small></label>{{ form.metodo_pago_id(class='form-select form-select-lg') }}
-<label class="form-label gf-label mt-3">Monto <small class="required">Obligatorio</small></label>{{ form.monto(class='form-control form-control-lg', inputmode='decimal', step='0.01') }}
-<label class="form-label gf-label mt-3">Referencia <small class="optional">Opcional</small></label>{{ form.referencia(class='form-control form-control-lg') }}
-<label class="form-label gf-label mt-3">Descripción <small class="optional">Opcional</small></label>{{ form.descripcion(class='form-control form-control-lg') }}
-<label class="form-label gf-label mt-3">Fecha <small class="optional">Opcional, se carga automático</small></label>{{ form.fecha_movimiento(class='form-control form-control-lg') }}
-<button class="btn btn-primary btn-lg w-100 mt-4" type="submit">Guardar</button>
-</form></div></div>
+<div class="card gf-card">
+  <div class="card-body">
+    {% if tipo == 'salida' %}
+    <div class="alert alert-info small">
+      Primero selecciona el método de pago. Si es <strong>Efectivo</strong>, el sistema usará automáticamente tu cuenta tipo efectivo. Si es <strong>Cajero</strong>, se registrará como retiro hacia efectivo y no como gasto.
+    </div>
+    {% endif %}
+    <form method="post">
+      {{ form.hidden_tag() }}
+
+      {% if tipo == 'salida' %}
+        <label class="form-label gf-label">Método de pago <small class="required">Obligatorio</small></label>
+        {{ form.metodo_pago_id(class='form-select form-select-lg', id='metodo_pago_id') }}
+
+        <div id="cuentaFieldWrapper" class="mt-3">
+          <label class="form-label gf-label">Cuenta <small id="cuentaHelpBadge" class="optional">Según método</small></label>
+          {{ form.cuenta_id(class='form-select form-select-lg', id='cuenta_id') }}
+          <div class="form-text" id="cuentaHelpText">Si eliges efectivo, esta cuenta se seleccionará automáticamente.</div>
+        </div>
+      {% else %}
+        <label class="form-label gf-label">Cuenta <small class="required">Obligatorio</small></label>
+        {{ form.cuenta_id(class='form-select form-select-lg') }}
+
+        <label class="form-label gf-label mt-3">Método de pago <small class="optional">Opcional</small></label>
+        {{ form.metodo_pago_id(class='form-select form-select-lg') }}
+      {% endif %}
+
+      <label class="form-label gf-label mt-3">Categoría <small class="optional">Opcional</small></label>{{ form.categoria_id(class='form-select form-select-lg') }}
+      <label class="form-label gf-label mt-3">Monto <small class="required">Obligatorio</small></label>{{ form.monto(class='form-control form-control-lg gf-money-input', inputmode='numeric', autocomplete='off') }}
+      <label class="form-label gf-label mt-3">Referencia <small class="optional">Opcional</small></label>{{ form.referencia(class='form-control form-control-lg') }}
+      <label class="form-label gf-label mt-3">Descripción <small class="optional">Opcional</small></label>{{ form.descripcion(class='form-control form-control-lg') }}
+      <label class="form-label gf-label mt-3">Fecha <small class="optional">Opcional, se carga automático</small></label>{{ form.fecha_movimiento(class='form-control form-control-lg') }}
+      <button class="btn btn-primary btn-lg w-100 mt-4" type="submit">Guardar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const metodo = document.getElementById('metodo_pago_id');
+  const cuenta = document.getElementById('cuenta_id');
+  const wrapper = document.getElementById('cuentaFieldWrapper');
+  const help = document.getElementById('cuentaHelpText');
+  const badge = document.getElementById('cuentaHelpBadge');
+
+  function norm(text) {
+    return (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  }
+
+  function updateCuentaVisibility() {
+    if (!metodo || !cuenta || !wrapper) return;
+    const selectedText = norm(metodo.options[metodo.selectedIndex]?.text || '');
+
+    if (selectedText === 'efectivo') {
+      cuenta.value = '0';
+      wrapper.style.display = 'none';
+      return;
+    }
+
+    wrapper.style.display = '';
+    if (selectedText === 'cajero') {
+      if (help) help.textContent = 'Selecciona la cuenta bancaria/de origen. El dinero se sumará automáticamente a tu cuenta efectivo.';
+      if (badge) {
+        badge.textContent = 'Obligatorio';
+        badge.className = 'required';
+      }
+    } else if (selectedText && selectedText !== 'seleccionar metodo') {
+      if (help) help.textContent = 'Selecciona la cuenta de donde saldrá el dinero.';
+      if (badge) {
+        badge.textContent = 'Obligatorio';
+        badge.className = 'required';
+      }
+    } else {
+      if (help) help.textContent = 'Primero selecciona el método de pago.';
+      if (badge) {
+        badge.textContent = 'Según método';
+        badge.className = 'optional';
+      }
+    }
+  }
+
+  if (metodo) {
+    metodo.addEventListener('change', updateCuentaVisibility);
+    updateCuentaVisibility();
+  }
+});
+</script>
 {% endblock %}
