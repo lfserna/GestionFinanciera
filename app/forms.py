@@ -23,7 +23,7 @@ class CuentaForm(FlaskForm):
     submit = SubmitField('Guardar')
 
 class MovimientoForm(FlaskForm):
-    cuenta_id = SelectField('Cuenta', coerce=int, validators=[DataRequired()])
+    cuenta_id = SelectField('Cuenta', coerce=int, validators=[Optional()])
     categoria_id = SelectField('Categoría', coerce=int, validators=[Optional()])
     metodo_pago_id = SelectField('Método de pago', coerce=int, validators=[Optional()])
     monto = DecimalField('Monto', validators=[DataRequired(), NumberRange(min=0.01)], places=2)
