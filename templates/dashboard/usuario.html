@@ -24,15 +24,15 @@
       <div class="card-body">
         <span class="text-muted">Saldo disponible</span>
         <h2>{{ saldo_total|money }}</h2>
-        <small class="text-muted">Total de cuentas diarias</small>
+        <small class="text-muted">Cuentas diarias + efectivo</small>
       </div>
     </div>
   </div>
   <div class="col-6 summary-card summary-expense">
-    <div class="card gf-card">
+    <div class="card gf-card expense-card">
       <div class="card-body">
-        <span class="text-muted">Gastos</span>
-        <h3>{{ gastos|money }}</h3>
+        <span class="text-danger">Gastos</span>
+        <h3 class="text-danger">{{ gastos|money }}</h3>
       </div>
     </div>
   </div>
