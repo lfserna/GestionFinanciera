@@ -45,6 +45,40 @@ def create_app():
         except Exception:
             return str(value)
 
+    @app.context_processor
+    def global_template_context():
+        """Datos pequeños disponibles en todos los templates."""
+        try:
+            from flask_login import current_user
+            from .models import SolicitudDinero
+
+            if current_user and current_user.is_authenticated and current_user.rol:
+                rol_nombre = current_user.rol.nombre
+                if rol_nombre == 'admin_asistida':
+                    count = SolicitudDinero.query.filter_by(
+                        admin_user_id=current_user.id,
+                        estado='pendiente'
+                    ).count()
+                    return {
+                        'solicitudes_badge_count': count,
+                        'solicitudes_menu_url': 'admin_asistida.solicitudes',
+                    }
+                if rol_nombre == 'asistida':
+                    count = SolicitudDinero.query.filter(
+                        SolicitudDinero.asistida_user_id == current_user.id,
+                        SolicitudDinero.estado.in_(['pendiente', 'aprobada'])
+                    ).count()
+                    return {
+                        'solicitudes_badge_count': count,
+                        'solicitudes_menu_url': 'asistida.solicitudes',
+                    }
+        except Exception:
+            pass
+        return {
+            'solicitudes_badge_count': 0,
+            'solicitudes_menu_url': None,
+        }
+
     def _money_input_mask_script():
         return r"""
 <script>
