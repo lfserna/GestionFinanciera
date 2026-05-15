@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 import unicodedata
 
@@ -20,6 +21,31 @@ def _normalizar(texto):
 
 def _es_metodo(nombre, esperado):
     return _normalizar(nombre) == _normalizar(esperado)
+
+
+def _rango_periodo(periodo):
+    """Devuelve (inicio, fin, periodo_normalizado). Si viene vacío, no filtra."""
+    now = now_local()
+    periodo = (periodo or 'todos').lower()
+    if periodo not in {'dia', 'semana', 'mes', 'trimestre', 'semestre', 'anio', 'todos'}:
+        periodo = 'todos'
+    if periodo == 'todos':
+        return None, None, periodo
+    if periodo == 'dia':
+        inicio = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif periodo == 'semana':
+        inicio = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    elif periodo == 'mes':
+        inicio = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif periodo == 'trimestre':
+        mes_inicio = ((now.month - 1) // 3) * 3 + 1
+        inicio = now.replace(month=mes_inicio, day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif periodo == 'semestre':
+        mes_inicio = 1 if now.month <= 6 else 7
+        inicio = now.replace(month=mes_inicio, day=1, hour=0, minute=0, second=0, microsecond=0)
+    else:
+        inicio = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    return inicio, now, periodo
 
 
 def obtener_cuenta_efectivo():
@@ -55,8 +81,27 @@ def cargar_choices(form, tipo_movimiento):
 @roles_required('usuario','admin_asistida')
 @password_change_required
 def index():
-    movimientos = Movimiento.query.filter_by(usuario_id=current_user.id).order_by(Movimiento.fecha_movimiento.desc()).limit(100).all()
-    return render_template('movimientos/index.html', movimientos=movimientos)
+    periodo_actual = request.args.get('periodo') or 'todos'
+    inicio, fin, periodo_actual = _rango_periodo(periodo_actual)
+    query = Movimiento.query.filter_by(usuario_id=current_user.id)
+    if inicio is not None:
+        query = query.filter(Movimiento.fecha_movimiento >= inicio, Movimiento.fecha_movimiento <= fin)
+    movimientos = query.order_by(Movimiento.fecha_movimiento.desc()).limit(300).all()
+    periodos_movimientos = [
+        ('todos', 'Todos'),
+        ('dia', 'Diario'),
+        ('semana', 'Semana'),
+        ('mes', 'Mensual'),
+        ('trimestre', 'Trimestral'),
+        ('semestre', 'Semestral'),
+        ('anio', 'Anual'),
+    ]
+    return render_template(
+        'movimientos/index.html',
+        movimientos=movimientos,
+        periodo_actual=periodo_actual,
+        periodos_movimientos=periodos_movimientos,
+    )
 
 
 @bp.route('/nuevo/<tipo>', methods=['GET','POST'])
