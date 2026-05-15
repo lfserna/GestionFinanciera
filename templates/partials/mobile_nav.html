@@ -12,8 +12,12 @@
   {% if current_user.rol.nombre == 'superadmin' %}
     <a href="{{ url_for('superadmin.usuarios') }}"><i class="bi bi-people"></i>Usuarios</a>
   {% endif %}
-  <button class="mobile-menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenuOffcanvas" aria-controls="mobileMenuOffcanvas">
-    <i class="bi bi-grid"></i>Menú
+  <button class="mobile-menu-btn mobile-menu-trigger" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenuOffcanvas" aria-controls="mobileMenuOffcanvas">
+    <span class="mobile-menu-icon-wrap">
+      <i class="bi bi-grid"></i>
+      {% if solicitudes_badge_count and solicitudes_badge_count > 0 %}<span class="mobile-nav-badge">{{ solicitudes_badge_count }}</span>{% endif %}
+    </span>
+    Menú
   </button>
 </nav>
 
@@ -28,13 +32,33 @@
         <a class="mobile-menu-option" href="{{ url_for('movimientos.index') }}"><i class="bi bi-list-ul"></i><span>Movimientos</span></a>
         <a class="mobile-menu-option" href="{{ url_for('dashboard.grafica') }}"><i class="bi bi-bar-chart"></i><span>Gráfica</span></a>
         <a class="mobile-menu-option" href="{{ url_for('cuentas.index') }}"><i class="bi bi-bank"></i><span>Cuentas</span></a>
-        <a class="mobile-menu-option menu-option-disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-three-dots"></i><span>Próximamente</span></a>
+        {% if solicitudes_menu_url %}
+          <a class="mobile-menu-option position-relative" href="{{ url_for(solicitudes_menu_url) }}">
+            <i class="bi bi-envelope-paper"></i><span>Solicitudes</span>
+            {% if solicitudes_badge_count and solicitudes_badge_count > 0 %}<span class="mobile-menu-badge">{{ solicitudes_badge_count }}</span>{% endif %}
+          </a>
+        {% else %}
+          <a class="mobile-menu-option menu-option-disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-envelope-paper"></i><span>Solicitudes</span></a>
+        {% endif %}
         <a class="mobile-menu-option menu-option-disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-pie-chart"></i><span>Reportes</span></a>
         <a class="mobile-menu-option menu-option-disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-bullseye"></i><span>Metas</span></a>
         <a class="mobile-menu-option menu-option-disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-wallet2"></i><span>Presupuestos</span></a>
         <a class="mobile-menu-option menu-option-disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-tags"></i><span>Categorías</span></a>
         <a class="mobile-menu-option menu-option-disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-bell"></i><span>Alertas</span></a>
         <a class="mobile-menu-option menu-option-disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-person"></i><span>Perfil</span></a>
+      </div>
+      <div class="mobile-menu-logout-row">
+        <a class="mobile-menu-logout" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i><span>Salir</span></a>
+      </div>
+    {% elif current_user.rol.nombre == 'asistida' %}
+      <div class="mobile-menu-grid-options">
+        <a class="mobile-menu-option" href="{{ url_for('asistida.solicitar') }}"><i class="bi bi-cash"></i><span>Solicitar</span></a>
+        <a class="mobile-menu-option position-relative" href="{{ url_for('asistida.solicitudes') }}">
+          <i class="bi bi-envelope-paper"></i><span>Solicitudes</span>
+          {% if solicitudes_badge_count and solicitudes_badge_count > 0 %}<span class="mobile-menu-badge">{{ solicitudes_badge_count }}</span>{% endif %}
+        </a>
+        <a class="mobile-menu-option" href="{{ url_for('asistida.gastos') }}"><i class="bi bi-receipt"></i><span>Gastos</span></a>
+        <a class="mobile-menu-option" href="{{ url_for('asistida.extras') }}"><i class="bi bi-stars"></i><span>Extras</span></a>
       </div>
       <div class="mobile-menu-logout-row">
         <a class="mobile-menu-logout" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i><span>Salir</span></a>
