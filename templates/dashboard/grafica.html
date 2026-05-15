@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h3 fw-bold mb-3">Gráfica</h1>
+
+<div class="card gf-card mb-3">
+  <div class="card-body">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <span class="fw-semibold me-1">Periodo:</span>
+      {% for valor, texto in periodos_grafica %}
+        {% set activo = periodo_actual == valor %}
+        <a class="btn btn-sm {{ 'btn-primary' if activo else 'btn-outline-primary' }}" href="{{ url_for('dashboard.grafica', periodo=('ninguno' if activo else valor)) }}">{{ texto }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card gf-card">
+      <div class="card-body">
+        <h5>Ingresos vs gastos</h5>
+        <canvas id="chartIngresosGastos"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card gf-card">
+      <div class="card-body">
+        <div class="mb-3">
+          <span class="text-muted">Ingresos</span>
+          <h3 class="text-success">{{ ingresos|money }}</h3>
+        </div>
+        <div class="mb-3">
+          <span class="text-muted">Gastos</span>
+          <h3 class="text-danger">{{ gastos|money }}</h3>
+        </div>
+        <div>
+          <span class="text-muted">Balance</span>
+          <h3>{{ ((ingresos or 0) - (gastos or 0))|money }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+new Chart(document.getElementById('chartIngresosGastos'), {
+  type: 'bar',
+  data: {
+    labels: ['Ingresos', 'Gastos'],
+    datasets: [{
+      label: 'Monto',
+      data: [{{ ingresos or 0 }}, {{ gastos or 0 }}]
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true } }
+  }
+});
+</script>
+{% endblock %}
