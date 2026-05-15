@@ -10,11 +10,11 @@ bp = Blueprint('dashboard', __name__)
 
 
 def _rango_periodo(periodo):
-    """Devuelve (inicio, fin, periodo_normalizado). Por defecto usa semana."""
+    """Devuelve (inicio, fin, periodo_normalizado). Por defecto usa mes."""
     now = now_local()
-    periodo = (periodo or 'semana').lower()
+    periodo = (periodo or 'mes').lower()
     if periodo not in {'dia', 'semana', 'mes', 'trimestre', 'semestre', 'anio', 'ninguno'}:
-        periodo = 'semana'
+        periodo = 'mes'
     if periodo == 'ninguno':
         return None, None, periodo
     if periodo == 'dia':
@@ -34,7 +34,7 @@ def _rango_periodo(periodo):
     return inicio, now, periodo
 
 
-def _resumen_usuario(periodo_actual='semana'):
+def _resumen_usuario(periodo_actual='mes'):
     inicio, fin, periodo_actual = _rango_periodo(periodo_actual)
 
     cuentas = Cuenta.query.filter_by(usuario_id=current_user.id, estado=True).all()
@@ -103,7 +103,7 @@ def index():
         solicitudes = SolicitudDinero.query.filter_by(asistida_user_id=current_user.id).order_by(SolicitudDinero.fecha_solicitud.desc()).limit(5).all()
         return render_template('dashboard/asistida.html', solicitudes=solicitudes)
 
-    return render_template('dashboard/usuario.html', **_resumen_usuario('semana'))
+    return render_template('dashboard/usuario.html', **_resumen_usuario('mes'))
 
 
 @bp.route('/dashboard/grafica')
@@ -111,7 +111,7 @@ def index():
 def grafica():
     if current_user.rol.nombre not in ['usuario', 'admin_asistida']:
         return redirect(url_for('dashboard.index'))
-    periodo_actual = request.args.get('periodo') or 'semana'
+    periodo_actual = request.args.get('periodo') or 'mes'
     periodos_grafica = [
         ('dia', 'Diario'), ('semana', 'Semana'), ('mes', 'Mensual'),
         ('trimestre', 'Trimestral'), ('semestre', 'Semestral'), ('anio', 'Anual')
