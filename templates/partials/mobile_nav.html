@@ -25,24 +25,32 @@
   <div class="offcanvas-body pt-0">
     {% if current_user.rol.nombre in ['usuario','admin_asistida'] %}
       <div class="mobile-menu-section">
-        <div class="small text-muted fw-bold text-uppercase mb-2">Movimientos</div>
-        <a class="mobile-menu-item" href="{{ url_for('movimientos.index') }}"><i class="bi bi-list-ul"></i><span>Todos los movimientos</span></a>
-        <div class="mobile-filter-grid mt-2">
-          <a href="{{ url_for('movimientos.index', periodo='dia') }}">Diario</a>
-          <a href="{{ url_for('movimientos.index', periodo='semana') }}">Semana</a>
-          <a href="{{ url_for('movimientos.index', periodo='mes') }}">Mensual</a>
-          <a href="{{ url_for('movimientos.index', periodo='trimestre') }}">Trimestral</a>
-          <a href="{{ url_for('movimientos.index', periodo='semestre') }}">Semestral</a>
-          <a href="{{ url_for('movimientos.index', periodo='anio') }}">Anual</a>
+        <div class="mobile-menu-grid-main">
+          <button class="mobile-menu-item mobile-menu-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#movimientosMenuCollapse" aria-expanded="false" aria-controls="movimientosMenuCollapse">
+            <i class="bi bi-list-ul"></i><span>Movimientos</span><i class="bi bi-chevron-down ms-auto"></i>
+          </button>
+          <a class="mobile-menu-item" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i><span>Salir</span></a>
+        </div>
+        <div class="collapse mt-2" id="movimientosMenuCollapse">
+          <a class="mobile-menu-item" href="{{ url_for('movimientos.index') }}"><i class="bi bi-clock-history"></i><span>Ver movimientos</span></a>
+          <div class="mobile-filter-grid mt-2">
+            <a href="{{ url_for('movimientos.index', periodo='dia') }}">Diario</a>
+            <a href="{{ url_for('movimientos.index', periodo='semana') }}">Semana</a>
+            <a href="{{ url_for('movimientos.index', periodo='mes') }}">Mensual</a>
+            <a href="{{ url_for('movimientos.index', periodo='trimestre') }}">Trimestral</a>
+            <a href="{{ url_for('movimientos.index', periodo='semestre') }}">Semestral</a>
+            <a href="{{ url_for('movimientos.index', periodo='anio') }}">Anual</a>
+          </div>
         </div>
       </div>
       <div class="mobile-menu-section">
-        <div class="small text-muted fw-bold text-uppercase mb-2">Gestión</div>
+        <a class="mobile-menu-item" href="{{ url_for('dashboard.grafica') }}"><i class="bi bi-bar-chart"></i><span>Gráfica</span></a>
         <a class="mobile-menu-item" href="{{ url_for('cuentas.index') }}"><i class="bi bi-bank"></i><span>Cuentas</span></a>
       </div>
+    {% else %}
+      <div class="mobile-menu-section">
+        <a class="mobile-menu-item" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i><span>Salir</span></a>
+      </div>
     {% endif %}
-    <div class="mobile-menu-section">
-      <a class="mobile-menu-item text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i><span>Salir</span></a>
-    </div>
   </div>
 </div>
