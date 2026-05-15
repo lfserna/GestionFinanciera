@@ -2,34 +2,49 @@
 {% block content %}
 <h1 class="h3 fw-bold mb-3">Gestión financiera</h1>
 
-<div class="row g-3 dashboard-summary">
-  <div class="col-12 col-md-4 summary-card summary-total"><div class="card gf-card"><div class="card-body"><span class="text-muted">Saldo disponible</span><h2>{{ saldo_total|money }}</h2><small class="text-muted">Total de cuentas diarias</small></div></div></div>
-  <div class="col-6 col-md-4 summary-card summary-income"><div class="card gf-card"><div class="card-body"><span class="text-muted">Ingresos</span><h3>{{ ingresos|money }}</h3></div></div></div>
-  <div class="col-6 col-md-4 summary-card summary-expense"><div class="card gf-card"><div class="card-body"><span class="text-muted">Gastos</span><h3>{{ gastos|money }}</h3></div></div></div>
-  <div class="col-6 col-md-3 summary-card summary-cash"><div class="card gf-card"><div class="card-body"><span class="text-muted">Efectivo</span><h3>{{ saldo_efectivo|money }}</h3></div></div></div>
-  <div class="col-6 col-md-3 summary-card summary-bank"><div class="card gf-card"><div class="card-body"><span class="text-muted">Bancos/Billeteras</span><h3>{{ saldo_bancos|money }}</h3></div></div></div>
-  <div class="col-6 col-md-3 summary-card summary-daily"><div class="card gf-card"><div class="card-body"><span class="text-muted">Cuentas diarias</span><h3>{{ saldo_diarias|money }}</h3></div></div></div>
-  <div class="col-6 col-md-3 summary-card summary-saving"><div class="card gf-card"><div class="card-body"><span class="text-muted">Ahorro</span><h3>{{ saldo_ahorro|money }}</h3></div></div></div>
-</div>
-
 {% if cuentas_diarias %}
-<div class="mt-3">
-  <h2 class="h5 fw-bold mb-2">Saldo por cuenta diaria</h2>
-  <div class="row g-3 daily-accounts-summary">
-    {% for cuenta in cuentas_diarias %}
-    <div class="col-12 col-md-4">
-      <div class="card gf-card daily-account-card">
-        <div class="card-body">
-          <span class="text-muted">{{ cuenta.nombre }}</span>
-          <h3>{{ cuenta.saldo_actual|money }}</h3>
-          <small class="text-muted">{{ cuenta.tipo_cuenta.replace('_',' ')|title }}</small>
-        </div>
+<div class="row g-3 daily-accounts-summary mb-3">
+  {% for cuenta in cuentas_diarias %}
+  <div class="col-12">
+    <div class="card gf-card daily-account-card">
+      <div class="card-body">
+        <span class="text-muted">Saldo disponible cuenta diaria</span>
+        <h2>{{ cuenta.saldo_actual|money }}</h2>
+        <small class="text-muted">{{ cuenta.nombre }} · {{ cuenta.tipo_cuenta.replace('_',' ')|title }}</small>
       </div>
     </div>
-    {% endfor %}
   </div>
+  {% endfor %}
 </div>
 {% endif %}
+
+<div class="row g-3 dashboard-summary">
+  <div class="col-12 summary-card summary-total">
+    <div class="card gf-card">
+      <div class="card-body">
+        <span class="text-muted">Saldo disponible</span>
+        <h2>{{ saldo_total|money }}</h2>
+        <small class="text-muted">Total de cuentas diarias</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 summary-card summary-expense">
+    <div class="card gf-card">
+      <div class="card-body">
+        <span class="text-muted">Gastos</span>
+        <h3>{{ gastos|money }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 summary-card summary-cash">
+    <div class="card gf-card">
+      <div class="card-body">
+        <span class="text-muted">Efectivo</span>
+        <h3>{{ saldo_efectivo|money }}</h3>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="row g-3 mt-1">
   <div class="col-12"><div class="card gf-card"><div class="card-body"><h5>Últimos movimientos</h5>{% for m in ultimos %}
