@@ -95,15 +95,17 @@ def index():
     if rol == 'superadmin':
         total_usuarios = Usuario.query.count()
         return render_template('dashboard/superadmin.html', total_usuarios=total_usuarios)
-    if rol == 'admin_asistida':
-        total_asistidos = Usuario.query.filter_by(admin_asistida_id=current_user.id).count()
-        pendientes = SolicitudDinero.query.filter_by(admin_user_id=current_user.id, estado='pendiente').count()
-        return render_template('dashboard/admin_asistida.html', total_asistidos=total_asistidos, pendientes=pendientes)
     if rol == 'asistida':
         solicitudes = SolicitudDinero.query.filter_by(asistida_user_id=current_user.id).order_by(SolicitudDinero.fecha_solicitud.desc()).limit(5).all()
         return render_template('dashboard/asistida.html', solicitudes=solicitudes)
 
-    return render_template('dashboard/usuario.html', **_resumen_usuario('mes'))
+    # Usuario común y admin_asistida comparten el mismo dashboard financiero.
+    # El admin_asistida seguirá teniendo sus opciones de gestión asistida en el menú/rutas correspondientes,
+    # pero en Inicio verá su propio saldo, gastos, efectivo y últimos movimientos.
+    if rol in ['usuario', 'admin_asistida']:
+        return render_template('dashboard/usuario.html', **_resumen_usuario('mes'))
+
+    return redirect(url_for('auth.logout'))
 
 
 @bp.route('/dashboard/grafica')
