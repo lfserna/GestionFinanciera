@@ -240,13 +240,13 @@ document.addEventListener('DOMContentLoaded', () => {
     row.className = 'detalle-item-row';
     row.innerHTML = `
       <input type="hidden" name="detalle_item_id[]" class="detalle-item-id">
-      <div class="detalle-item-header">
-        <div class="detalle-item-main">
-          <label class="form-label gf-label mb-1">Item</label>
-          <input class="form-control form-control-lg detalle-nombre" name="detalle_item_nombre[]" placeholder="Ej. Queso mozzarella" autocomplete="off" autocapitalize="none">
-          <div class="detalle-suggestions"></div>
-        </div>
-        <button class="btn btn-outline-danger btn-sm detalle-remove-btn" type="button"><i class="bi bi-trash"></i></button>
+      <div class="detalle-item-label-row">
+        <label class="form-label gf-label mb-1">Item</label>
+        <button class="btn btn-outline-danger btn-sm detalle-remove-btn" type="button" aria-label="Eliminar item"><i class="bi bi-trash"></i></button>
+      </div>
+      <div class="detalle-item-main">
+        <input class="form-control form-control-lg detalle-nombre" name="detalle_item_nombre[]" placeholder="Ej. Queso mozzarella" autocomplete="off" autocapitalize="none">
+        <div class="detalle-suggestions"></div>
       </div>
       <div class="detalle-item-grid compact">
         <div>
