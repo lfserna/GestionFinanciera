@@ -1,12 +1,12 @@
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import unicodedata
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from app.decorators import roles_required, password_change_required
 from app.forms import MovimientoForm
-from app.models import Cuenta, Categoria, MetodoPago, Movimiento, Transferencia
+from app.models import Cuenta, Categoria, MetodoPago, Movimiento, Transferencia, ItemSalida, MovimientoDetalle
 from app.extensions import db
 from app.utils import now_local, registrar_auditoria
 
@@ -17,6 +17,13 @@ def _normalizar(texto):
     texto = (texto or '').strip().lower()
     texto = unicodedata.normalize('NFKD', texto)
     return ''.join(c for c in texto if not unicodedata.combining(c))
+
+
+def _decimal(value, default='0'):
+    try:
+        return Decimal(str(value if value not in [None, ''] else default)).quantize(Decimal('0.01'))
+    except (InvalidOperation, ValueError):
+        return Decimal(default).quantize(Decimal('0.01'))
 
 
 def _es_metodo(nombre, esperado):
@@ -76,6 +83,79 @@ def cargar_choices(form, tipo_movimiento):
     form.metodo_pago_id.choices = [(0, 'Seleccionar método')] + [(m.id, m.nombre) for m in MetodoPago.query.filter_by(estado=True).order_by(MetodoPago.nombre.asc()).all()]
 
 
+def _leer_detalles_salida():
+    nombres = request.form.getlist('detalle_item_nombre[]')
+    item_ids = request.form.getlist('detalle_item_id[]')
+    cantidades = request.form.getlist('detalle_cantidad[]')
+    precios = request.form.getlist('detalle_precio[]')
+    observaciones = request.form.getlist('detalle_observacion[]')
+
+    detalles = []
+    max_len = max(len(nombres), len(item_ids), len(cantidades), len(precios), len(observaciones), 0)
+    for i in range(max_len):
+        nombre = (nombres[i] if i < len(nombres) else '').strip()
+        if not nombre:
+            continue
+        cantidad = _decimal(cantidades[i] if i < len(cantidades) else '1', '1')
+        precio = _decimal(precios[i] if i < len(precios) else '0', '0')
+        if cantidad <= 0 or precio < 0:
+            continue
+        subtotal = (cantidad * precio).quantize(Decimal('0.01'))
+        raw_item_id = item_ids[i] if i < len(item_ids) else ''
+        try:
+            item_id = int(raw_item_id) if raw_item_id else None
+        except ValueError:
+            item_id = None
+        detalles.append({
+            'item_id': item_id,
+            'nombre': nombre,
+            'cantidad': cantidad,
+            'precio': precio,
+            'subtotal': subtotal,
+            'observacion': (observaciones[i] if i < len(observaciones) else '').strip() or None,
+        })
+    return detalles
+
+
+def _guardar_detalles_salida(movimiento, detalles):
+    creados = []
+    for detalle in detalles:
+        item = None
+        if detalle['item_id']:
+            item = ItemSalida.query.filter_by(id=detalle['item_id'], usuario_id=current_user.id).first()
+        if not item:
+            item = ItemSalida.query.filter(
+                ItemSalida.usuario_id == current_user.id,
+                ItemSalida.nombre == detalle['nombre']
+            ).first()
+        if not item:
+            item = ItemSalida(
+                usuario_id=current_user.id,
+                nombre=detalle['nombre'],
+                precio_referencia=detalle['precio'],
+                estado=True,
+            )
+            db.session.add(item)
+            db.session.flush()
+        else:
+            item.nombre = detalle['nombre']
+            item.precio_referencia = detalle['precio']
+            item.estado = True
+
+        mov_detalle = MovimientoDetalle(
+            movimiento_id=movimiento.id,
+            item_id=item.id,
+            item_nombre=detalle['nombre'],
+            cantidad=detalle['cantidad'],
+            precio_unitario=detalle['precio'],
+            subtotal=detalle['subtotal'],
+            observacion=detalle['observacion'],
+        )
+        db.session.add(mov_detalle)
+        creados.append(mov_detalle)
+    return creados
+
+
 @bp.route('/')
 @login_required
 @roles_required('usuario','admin_asistida')
@@ -104,6 +184,26 @@ def index():
     )
 
 
+@bp.route('/items/buscar')
+@login_required
+@roles_required('usuario','admin_asistida')
+@password_change_required
+def buscar_items():
+    q = (request.args.get('q') or '').strip()
+    query = ItemSalida.query.filter_by(usuario_id=current_user.id, estado=True)
+    if q:
+        query = query.filter(ItemSalida.nombre.ilike(f'%{q}%'))
+    items = query.order_by(ItemSalida.nombre.asc()).limit(20).all()
+    return jsonify([
+        {
+            'id': item.id,
+            'nombre': item.nombre,
+            'precio_referencia': str(item.precio_referencia or '0.00'),
+        }
+        for item in items
+    ])
+
+
 @bp.route('/nuevo/<tipo>', methods=['GET','POST'])
 @login_required
 @roles_required('usuario','admin_asistida')
@@ -115,6 +215,7 @@ def nuevo(tipo):
 
     form = MovimientoForm()
     cargar_choices(form, tipo)
+    items_salida = ItemSalida.query.filter_by(usuario_id=current_user.id, estado=True).order_by(ItemSalida.nombre.asc()).limit(200).all() if tipo == 'salida' else []
 
     if request.method == 'GET':
         form.fecha_movimiento.data = now_local()
@@ -131,7 +232,7 @@ def nuevo(tipo):
 
         if tipo == 'salida' and not metodo:
             flash('Primero debes seleccionar el método de pago.', 'danger')
-            return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida')
+            return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida', items_salida=items_salida)
 
         cuenta = None
 
@@ -139,19 +240,19 @@ def nuevo(tipo):
             cuenta = Cuenta.query.filter_by(id=form.cuenta_id.data, usuario_id=current_user.id, estado=True).first()
             if not cuenta:
                 flash('Debes seleccionar la cuenta destino.', 'danger')
-                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nuevo ingreso')
+                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nuevo ingreso', items_salida=items_salida)
 
         elif _es_metodo(metodo_nombre, 'efectivo'):
             cuenta = obtener_cuenta_efectivo()
             if not cuenta:
                 flash('Para registrar salidas en efectivo primero debes crear una cuenta tipo Efectivo activa.', 'danger')
-                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida')
+                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida', items_salida=items_salida)
 
         else:
             cuenta = Cuenta.query.filter_by(id=form.cuenta_id.data, usuario_id=current_user.id, estado=True).first()
             if not cuenta:
                 flash('Debes seleccionar la cuenta de origen para este método de pago.', 'danger')
-                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida')
+                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida', items_salida=items_salida)
 
         saldo_actual = Decimal(cuenta.saldo_actual or 0)
 
@@ -160,13 +261,13 @@ def nuevo(tipo):
             cuenta_efectivo = obtener_cuenta_efectivo()
             if not cuenta_efectivo:
                 flash('Para retirar por cajero primero debes crear una cuenta tipo Efectivo activa.', 'danger')
-                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida')
+                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida', items_salida=items_salida)
             if cuenta.id == cuenta_efectivo.id:
                 flash('El retiro por cajero debe salir de una cuenta que no sea efectivo.', 'danger')
-                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida')
+                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida', items_salida=items_salida)
             if saldo_actual < monto:
                 flash('No se permite saldo negativo en la cuenta de origen.', 'danger')
-                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida')
+                return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida', items_salida=items_salida)
 
             saldo_origen_anterior = Decimal(cuenta.saldo_actual or 0)
             saldo_efectivo_anterior = Decimal(cuenta_efectivo.saldo_actual or 0)
@@ -231,8 +332,9 @@ def nuevo(tipo):
 
         if tipo == 'salida' and saldo_actual < monto:
             flash('No se permite saldo negativo.', 'danger')
-            return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida')
+            return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nueva salida', items_salida=items_salida)
 
+        detalles_salida = _leer_detalles_salida() if tipo == 'salida' else []
         cuenta.saldo_actual = saldo_actual + monto if tipo == 'ingreso' else saldo_actual - monto
         mov = Movimiento(
             usuario_id=current_user.id,
@@ -248,6 +350,10 @@ def nuevo(tipo):
         )
         db.session.add(mov)
         db.session.flush()
+
+        detalles_creados = _guardar_detalles_salida(mov, detalles_salida) if tipo == 'salida' and detalles_salida else []
+        detalle_total = sum((Decimal(d.subtotal or 0) for d in detalles_creados), Decimal('0.00'))
+
         registrar_auditoria('registrar_movimiento', 'movimientos', mov.id, valor_nuevo={
             'tipo_movimiento': mov.tipo_movimiento,
             'cuenta_id': mov.cuenta_id,
@@ -258,9 +364,18 @@ def nuevo(tipo):
             'saldo_nuevo': cuenta.saldo_actual,
             'referencia': mov.referencia,
             'descripcion': mov.descripcion,
+            'detalle_items': len(detalles_creados),
+            'detalle_total': detalle_total,
         })
         db.session.commit()
-        flash('Movimiento registrado correctamente.', 'success')
+        if detalles_creados:
+            diferencia = (monto - detalle_total).quantize(Decimal('0.01'))
+            if diferencia != Decimal('0.00'):
+                flash(f'Movimiento registrado. Detalle: {detalle_total} Bs; diferencia con total: {diferencia} Bs.', 'warning')
+            else:
+                flash('Movimiento registrado correctamente con detalle de items.', 'success')
+        else:
+            flash('Movimiento registrado correctamente.', 'success')
         return redirect(url_for('movimientos.index'))
 
-    return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nuevo ingreso' if tipo=='ingreso' else 'Nueva salida')
+    return render_template('movimientos/form.html', form=form, tipo=tipo, titulo='Nuevo ingreso' if tipo=='ingreso' else 'Nueva salida', items_salida=items_salida)
