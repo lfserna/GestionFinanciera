@@ -11,7 +11,7 @@ def create_app():
     login_manager.init_app(app)
     csrf.init_app(app)
 
-    from .models import Rol, MetodoPago, Categoria
+    from .models import Rol, MetodoPago, Categoria, ItemSalida, MovimientoDetalle
 
     from .auth.routes import bp as auth_bp
     from .dashboard.routes import bp as dashboard_bp
@@ -30,6 +30,11 @@ def create_app():
     app.register_blueprint(admin_asistida_bp)
     app.register_blueprint(superadmin_bp)
     app.register_blueprint(alertas_bp)
+
+    with app.app_context():
+        # Crea únicamente tablas faltantes. No modifica ni borra tablas existentes.
+        # Necesario para nuevas tablas como items_salida y movimiento_detalles.
+        db.create_all()
 
     @app.template_filter('money')
     def money_filter(value):
@@ -86,7 +91,7 @@ def create_app():
   function moneyTargets() {
     return Array.from(document.querySelectorAll('input')).filter(function (input) {
       var name = (input.name || '').toLowerCase();
-      return name.includes('monto') || name === 'saldo_inicial' || name === 'saldo_actual' || name === 'monto_limite' || name === 'monto_objetivo';
+      return name.includes('monto') || name === 'saldo_inicial' || name === 'saldo_actual' || name === 'monto_limite' || name === 'monto_objetivo' || name === 'detalle_precio[]' || name === 'detalle_cantidad[]';
     });
   }
   function onlyDigits(value) {
