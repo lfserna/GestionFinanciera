@@ -119,6 +119,37 @@ class Movimiento(db.Model):
     cuenta = db.relationship('Cuenta')
     categoria = db.relationship('Categoria')
     metodo_pago = db.relationship('MetodoPago')
+    detalles = db.relationship('MovimientoDetalle', backref='movimiento', cascade='all, delete-orphan')
+
+
+class ItemSalida(db.Model):
+    __tablename__ = 'items_salida'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
+    nombre = db.Column(db.String(160), nullable=False)
+    descripcion = db.Column(db.String(255))
+    precio_referencia = db.Column(db.Numeric(12, 2))
+    estado = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
+
+    usuario = db.relationship('Usuario', backref='items_salida')
+
+
+class MovimientoDetalle(db.Model):
+    __tablename__ = 'movimiento_detalles'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    movimiento_id = db.Column(db.Integer, db.ForeignKey('movimientos.id'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('items_salida.id'))
+    item_nombre = db.Column(db.String(160), nullable=False)
+    cantidad = db.Column(db.Numeric(12, 2), default=1, nullable=False)
+    precio_unitario = db.Column(db.Numeric(12, 2), nullable=False)
+    subtotal = db.Column(db.Numeric(12, 2), nullable=False)
+    observacion = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=now_local, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=now_local)
+
+    item = db.relationship('ItemSalida')
 
 
 class Transferencia(db.Model):
