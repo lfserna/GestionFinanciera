@@ -29,7 +29,27 @@
       {% endif %}
 
       <label class="form-label gf-label mt-3">Categoría <small class="optional">Opcional</small></label>{{ form.categoria_id(class='form-select form-select-lg') }}
-      <label class="form-label gf-label mt-3">Monto <small class="required">Obligatorio</small></label>{{ form.monto(class='form-control form-control-lg gf-money-input', inputmode='numeric', autocomplete='off') }}
+      <label class="form-label gf-label mt-3">Monto total <small class="required">Obligatorio</small></label>{{ form.monto(class='form-control form-control-lg gf-money-input', inputmode='numeric', autocomplete='off', id='monto_total') }}
+
+      {% if tipo == 'salida' %}
+      <div class="card gf-card mt-3 salida-detalle-card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <div>
+              <h2 class="h5 fw-bold mb-1">Detalle de salida</h2>
+              <p class="text-muted small mb-0">Agrega productos o servicios a la factura. El precio queda guardado en este movimiento aunque cambie después.</p>
+            </div>
+            <button class="btn btn-outline-primary btn-sm" type="button" id="btnAddDetalle"><i class="bi bi-plus-lg"></i> Item</button>
+          </div>
+          <div id="detalleItemsContainer" class="detalle-items-container"></div>
+          <div class="detalle-total-box mt-3">
+            <div class="d-flex justify-content-between"><span>Total detalle</span><strong id="detalleTotalVista">0.00 Bs</strong></div>
+            <div class="d-flex justify-content-between small"><span class="text-muted">Diferencia con salida</span><strong id="detalleDiferenciaVista" class="text-muted">0.00 Bs</strong></div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       <label class="form-label gf-label mt-3">Referencia <small class="optional">Opcional</small></label>{{ form.referencia(class='form-control form-control-lg') }}
       <label class="form-label gf-label mt-3">Descripción <small class="optional">Opcional</small></label>{{ form.descripcion(class='form-control form-control-lg') }}
       <label class="form-label gf-label mt-3">Fecha <small class="optional">Opcional, se carga automático</small></label>{{ form.fecha_movimiento(class='form-control form-control-lg') }}
@@ -40,6 +60,13 @@
 {% endblock %}
 
 {% block scripts %}
+{% if tipo == 'salida' %}
+<datalist id="itemsSalidaList">
+  {% for item in items_salida or [] %}
+    <option value="{{ item.nombre }}" data-id="{{ item.id }}" data-precio="{{ item.precio_referencia or '0.00' }}"></option>
+  {% endfor %}
+</datalist>
+{% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const metodo = document.getElementById('metodo_pago_id');
@@ -88,6 +115,112 @@ document.addEventListener('DOMContentLoaded', () => {
     metodo.addEventListener('change', updateCuentaVisibility);
     updateCuentaVisibility();
   }
+
+  const addBtn = document.getElementById('btnAddDetalle');
+  const container = document.getElementById('detalleItemsContainer');
+  const totalVista = document.getElementById('detalleTotalVista');
+  const diferenciaVista = document.getElementById('detalleDiferenciaVista');
+  const montoTotal = document.getElementById('monto_total');
+  const dataList = document.getElementById('itemsSalidaList');
+
+  function moneyNumber(value) {
+    const raw = String(value || '0').replace(/[^0-9.]/g, '');
+    const num = parseFloat(raw || '0');
+    return Number.isFinite(num) ? num : 0;
+  }
+
+  function formatMoney(num) {
+    return `${(Number(num) || 0).toFixed(2)} Bs`;
+  }
+
+  function initMoneyInputLocal(input) {
+    if (!input || input.dataset.moneyMaskReady === '1') return;
+    input.dataset.moneyMaskReady = '1';
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('autocomplete', 'off');
+    input.addEventListener('input', () => {
+      const digits = String(input.value || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '') || '0';
+      input.value = (parseInt(digits, 10) / 100).toFixed(2);
+      recalcularDetalle();
+    });
+    input.addEventListener('focus', () => { if (!input.value) input.value = '0.00'; });
+  }
+
+  function recalcularDetalle() {
+    if (!container) return;
+    let total = 0;
+    container.querySelectorAll('.detalle-item-row').forEach(row => {
+      const cantidad = moneyNumber(row.querySelector('[name="detalle_cantidad[]"]')?.value || '1');
+      const precio = moneyNumber(row.querySelector('[name="detalle_precio[]"]')?.value || '0');
+      const subtotal = cantidad * precio;
+      row.querySelector('.detalle-subtotal').textContent = formatMoney(subtotal);
+      total += subtotal;
+    });
+    if (totalVista) totalVista.textContent = formatMoney(total);
+    const diff = moneyNumber(montoTotal?.value || '0') - total;
+    if (diferenciaVista) {
+      diferenciaVista.textContent = formatMoney(diff);
+      diferenciaVista.className = Math.abs(diff) < 0.01 ? 'text-success' : 'text-danger';
+    }
+  }
+
+  function buscarOption(nombre) {
+    const normalized = norm(nombre);
+    if (!dataList) return null;
+    return Array.from(dataList.options).find(opt => norm(opt.value) === normalized) || null;
+  }
+
+  function crearDetalleRow() {
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'detalle-item-row';
+    row.innerHTML = `
+      <input type="hidden" name="detalle_item_id[]" class="detalle-item-id">
+      <div class="detalle-item-main">
+        <label class="form-label gf-label mb-1">Item</label>
+        <input class="form-control form-control-lg detalle-nombre" name="detalle_item_nombre[]" list="itemsSalidaList" placeholder="Ej. Queso mozzarella" autocomplete="off">
+      </div>
+      <div class="detalle-item-grid">
+        <div>
+          <label class="form-label gf-label mb-1">Cantidad</label>
+          <input class="form-control form-control-lg detalle-cantidad" name="detalle_cantidad[]" value="1.00" inputmode="numeric">
+        </div>
+        <div>
+          <label class="form-label gf-label mb-1">Precio</label>
+          <input class="form-control form-control-lg detalle-precio" name="detalle_precio[]" value="0.00" inputmode="numeric">
+        </div>
+      </div>
+      <div class="detalle-item-footer">
+        <div><small class="text-muted">Subtotal</small><strong class="detalle-subtotal">0.00 Bs</strong></div>
+        <button class="btn btn-outline-danger btn-sm" type="button"><i class="bi bi-trash"></i></button>
+      </div>
+      <input class="form-control mt-2" name="detalle_observacion[]" placeholder="Observación opcional">
+    `;
+    container.appendChild(row);
+    const nombreInput = row.querySelector('.detalle-nombre');
+    const itemIdInput = row.querySelector('.detalle-item-id');
+    const precioInput = row.querySelector('.detalle-precio');
+    const cantidadInput = row.querySelector('.detalle-cantidad');
+    initMoneyInputLocal(precioInput);
+    initMoneyInputLocal(cantidadInput);
+
+    nombreInput.addEventListener('change', () => {
+      const opt = buscarOption(nombreInput.value);
+      if (opt) {
+        itemIdInput.value = opt.dataset.id || '';
+        if (opt.dataset.precio) precioInput.value = Number(opt.dataset.precio).toFixed(2);
+      } else {
+        itemIdInput.value = '';
+      }
+      recalcularDetalle();
+    });
+    [precioInput, cantidadInput].forEach(input => input.addEventListener('input', recalcularDetalle));
+    row.querySelector('button').addEventListener('click', () => { row.remove(); recalcularDetalle(); });
+    recalcularDetalle();
+  }
+
+  if (addBtn) addBtn.addEventListener('click', crearDetalleRow);
+  if (montoTotal) montoTotal.addEventListener('input', recalcularDetalle);
 });
 </script>
 {% endblock %}
